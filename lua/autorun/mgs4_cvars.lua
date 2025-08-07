@@ -1,0 +1,1 @@
+CreateClientConVar( "mgs4_cqc_thirdperson", "0", true, false, "Enable/Disable CQC third-person view", 0, 1 )
