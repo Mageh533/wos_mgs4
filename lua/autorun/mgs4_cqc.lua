@@ -105,10 +105,14 @@ function Cqc_throw(ply, target)
     local player_pos = ply:GetPos()
     local player_angle = ply:GetAngles()
     
-    target:SetPos(player_pos + (player_angle:Forward() * 20)) -- Move the target slightly forward
+    target:SetPos(player_pos + (player_angle:Forward() * 30)) -- Move the target slightly forward
 
-    ply:SetSVAnimation("mgs4_cqc_throw", true)
-    target:SetSVAnimation("mgs4_cqc_throw_victim", true)
+    if target:IsPlayer() then
+        target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+    else
+        -- For NPCs, we can use a different method to ensure they face the player
+        target:SetAngles(player_angle)
+    end
 
     local cqc_throw_anim = ply:LookupSequence("mgs4_cqc_throw")
     local anim_length = ply:SequenceDuration(cqc_throw_anim)
@@ -126,7 +130,20 @@ function Cqc_throw(ply, target)
 
     target:SVAnimationPrep(target_anim_length, function()
         target:SetNW2Bool("is_in_cqc", false)
+
+        target:SetPos(ply:GetPos() + (ply:GetRight() * -30)) -- Move the target slightly forward
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(ply:GetAngles()) -- Set the target's eye angles to face away from the player
+        else
+            -- For NPCs, we can use a different method to ensure they face away from the player
+            target:SetAngles(ply:GetAngles())
+        end
+
     end)
+    
+    ply:SetSVAnimation("mgs4_cqc_throw", true)
+    target:SetSVAnimation("mgs4_cqc_throw_victim", true)
 
 end
 
