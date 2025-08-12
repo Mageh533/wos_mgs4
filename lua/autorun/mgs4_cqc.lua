@@ -52,7 +52,7 @@ function ent:SVAnimationPrep(duration, callback)
 
             self:SelectWeapon( prevWeapon )
         else
-            self:ClearCondition( COND.NPC_UNFREEZE )
+            self:SetCondition( COND.NPC_UNFREEZE )
         end
 
         self:SetNW2Bool("animation_playing", false)
@@ -83,7 +83,12 @@ end
 
 -- Fail, play anim to punish the player
 function Cqc_fail(ply)
-    ply:SetSVAnimation("mgs4_cqc_fail", true)
+    local crouched = ply:Crouching()
+    if crouched then
+        ply:SetSVAnimation("mgs4_cqc_fail_crouched", true)
+    else
+        ply:SetSVAnimation("mgs4_cqc_fail", true)
+    end
 
     local cqc_fail_anim = ply:LookupSequence("mgs4_cqc_fail")
     local anim_length = ply:SequenceDuration(cqc_fail_anim)
@@ -93,8 +98,10 @@ function Cqc_fail(ply)
     ply:SVAnimationPrep(anim_length, function()
         ply:SetNW2Bool("is_in_cqc", false)
         -- Move player slightly forward
-        local forward = ply:GetForward()
-        ply:SetPos(ply:GetPos() + forward * 20)
+        if !crouched then
+            local forward = ply:GetForward()
+            ply:SetPos(ply:GetPos() + forward * 20)
+        end
     end)
 
 end
@@ -124,9 +131,12 @@ function Cqc_throw(ply, target)
 
     ply:SVAnimationPrep(anim_length, function()
         ply:SetNW2Bool("is_in_cqc", false)
+        
+        -- Look to the left
+        ply:SetEyeAngles(ply:GetAngles() + Angle(0, 90, 0))
     end)
 
-    target:SetNW2Bool("have_been_cqced", true)
+    target:SetNW2Int("last_nonlethal_damage_type", 2)
 
     target:SVAnimationPrep(target_anim_length, function()
         target:SetNW2Bool("is_in_cqc", false)
@@ -139,6 +149,11 @@ function Cqc_throw(ply, target)
             -- For NPCs, we can use a different method to ensure they face away from the player
             target:SetAngles(ply:GetAngles())
         end
+
+        -- CQC level stun damage
+        local cqc_level = ply:GetNW2Int("cqc_level", 0)
+
+        target:SetNW2Float("psyche", 25 * cqc_level)
 
     end)
     

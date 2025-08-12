@@ -2,13 +2,13 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     --- Ensure only valve biped models are affected
     if ent:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
+    --- Only affects players
     ent:SetNW2Bool("animation_playing", false)
 
     --- CQC Related Variables
     ent:SetNW2Entity("cqc_target", Entity(0))
 
     ent:SetNW2Bool("is_in_cqc", false)
-    ent:SetNW2Bool("have_been_cqced", false)
 
     --- CQC Level
     --- 0 = None (Only punch punch kick combo)
@@ -19,9 +19,15 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Int("cqc_level", 0)
 
     --- Psyche
-    --- If it reaches 0, the player will be knocked out
-    --- Only regenerates when knocked out
+    --- If it reaches 0, the entity will be knocked out
+    --- Only regenerates when knocked out or if reading a magazine
     ent:SetNW2Float("psyche", 100)
+
+    ---- Last Non-Lethal Damage Type
+    --- 0 = Generic Stun
+    --- 1 = Tranquilizers
+    --- 2 = CQC Stun
+    ent:SetNW2Int("last_nonlethal_damage_type", 0)
 end)
 
 -- Camera during CQC
