@@ -82,29 +82,48 @@ function ent:Knockout()
     end
 
     if knockout_type == 0 then
-        self:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
         self:SVAnimationPrep("mgs4_knocked_out_loop_faceup")
+        self:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
     elseif knockout_type == 1 then
         if crouched then
-            self:SetSVAnimation("mgs4_sleep_crouched", true)
             self:SVAnimationPrep("mgs4_sleep_crouched")
+            self:SetSVAnimation("mgs4_sleep_crouched", true)
         else
-            self:SetSVAnimation("mgs4_sleep", true)
             self:SVAnimationPrep("mgs4_sleep")
+            self:SetSVAnimation("mgs4_sleep", true)
         end
     elseif knockout_type == 2 then
         if crouched then
-            self:SetSVAnimation("mgs4_stun_crouched", true)
             self:SVAnimationPrep("mgs4_stun_crouched")
+            self:SetSVAnimation("mgs4_stun_crouched", true)
         else
-            self:SetSVAnimation("mgs4_stun", true)
             self:SVAnimationPrep("mgs4_stun")
+            self:SetSVAnimation("mgs4_stun", true)
         end
     end
 end
 
-function KnockoutLoop(ent)
+function KnockoutLoop(entity)
+    entity:SetNW2Bool("animation_playing", true)
 
+    local knockout_type = entity:GetNW2Int("last_nonlethal_damage_type", 0)
+
+    if knockout_type == 2 then
+        entity:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
+    else
+        entity:SetSVAnimation("mgs4_knocked_out_loop_facedown", true)
+    end
+
+    local psyche = entity:GetNW2Float("psyche", 100)
+    if psyche < 100 then
+        psyche = psyche + GetConVar("mgs4_psyche_recovery"):GetFloat() * FrameTime()
+        entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
+    end
+
+    if entity:IsPlayer() and entity:KeyPressed(IN_USE) then
+        psyche = psyche + GetConVar("mgs4_psyche_recovery_action"):GetFloat()
+        entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
+    end
 end
 
 hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
@@ -202,39 +221,24 @@ hook.Add("PlayerPostThink", "MGS4CQCCheck", function(ply)
 end)
 
 -- Check for entities that have reached 0 psyche
-hook.Add("Think", "MGS4PsycheCheck", function()
-    for _, ent in ipairs(ents.GetAll()) do
-        if ent:GetNW2Float("psyche", 100) <= 0 and not ent:GetNW2Bool("is_knocked_out", false) then
-            ent:Knockout() -- Knock out the player silently
+hook.Add("Tick", "MGS4PsycheCheck", function()
+    local npc_and_players = ents.FindByClass("player") -- Find all players
+    npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
+
+    for _, entity in ipairs(npc_and_players) do
+        if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
+
+        if entity:GetNW2Float("psyche", 100) <= 0 and not entity:GetNW2Bool("is_knocked_out", false) then
+            entity:Knockout() -- Knock out the player silently
         end
 
-        if ent:GetNW2Bool("is_knocked_out", true) and ent:GetNW2Float("psyche", 100) <= 100 then
-            ent:SetNW2Bool("animation_playing", true)
-
-            local knockout_type = ent:GetNW2Int("last_nonlethal_damage_type", 0)
-
-            if knockout_type == 2 then
-                ent:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
-            else
-                ent:SetSVAnimation("mgs4_knocked_out_loop_facedown", true)
-            end
-
-            local psyche = ent:GetNW2Float("psyche", 100)
-            if psyche < 100 then
-                psyche = psyche + GetConVar("mgs4_psyche_recovery"):GetFloat() * FrameTime()
-                ent:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
-            end
-
-            if ent:IsPlayer() and ent:KeyPressed(IN_USE) then
-                psyche = psyche + GetConVar("mgs4_psyche_recovery_action"):GetFloat()
-                ent:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
-            end
-        
+        if entity:GetNW2Bool("is_knocked_out", true) and entity:GetNW2Float("psyche", 100) <= 100 then
+            KnockoutLoop(entity)
         end
 
-        if ent:GetNW2Bool("is_knocked_out", true) and ent:GetNW2Float("psyche", 100) >= 100 then
-            ent:SetNW2Bool("is_knocked_out", false)
-            ent:SetNW2Float("psyche", 100)
+        if entity:GetNW2Bool("is_knocked_out", true) and entity:GetNW2Float("psyche", 100) >= 100 then
+            entity:SetNW2Bool("is_knocked_out", false)
+            entity:SetNW2Float("psyche", 100)
         end
     end
 end)
