@@ -96,10 +96,7 @@ function ent:Knockout()
         crouched = false
     end
 
-    if knockout_type == 0 then
-        self:SVAnimationPrep("mgs4_knocked_out_loop_faceup")
-        self:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
-    elseif knockout_type == 1 then
+    if knockout_type == 1 then
         if crouched then
             self:SVAnimationPrep("mgs4_sleep_crouched")
             self:SetSVAnimation("mgs4_sleep_crouched", true)
@@ -122,11 +119,15 @@ function KnockoutLoop(entity)
     if entity:GetNW2Float("psyche", 100) >= 100 then
         entity:SetNW2Bool("is_knocked_out", false)
         entity:SetNW2Float("psyche", 100)
+
         if entity:GetNW2Int("last_nonlethal_damage_type", 0) == 0 then
+            entity:SVAnimationPrep("mgs4_stun_recover_faceup")
             entity:SetSVAnimation("mgs4_stun_recover_faceup", true)
         elseif entity:GetNW2Int("last_nonlethal_damage_type", 0) == 1 then
+            entity:SVAnimationPrep("mgs4_sleep_recover_facedown")
             entity:SetSVAnimation("mgs4_sleep_recover_facedown", true)
         else
+            entity:SVAnimationPrep("mgs4_stun_recover_facedown")
             entity:SetSVAnimation("mgs4_stun_recover_facedown", true)
         end
 
@@ -211,9 +212,8 @@ hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
     hide_player_head(!thirdperson)
 
     -- position adjust for each
-    
-    local head_bone = ply:LookupBone("ValveBiped.Bip01_Head1")
-    local head_pos = head_bone and ply:GetBonePosition(head_bone) or pos
+    local head_pos = ply:GetAttachment(ply:LookupAttachment("eyes")).Pos
+    local head_angle = ply:GetAttachment(ply:LookupAttachment("eyes")).Ang
 
     local pelvis_bone = ply:LookupBone("ValveBiped.Bip01_Pelvis")
     local pelvis_pos = pelvis_bone and ply:GetBonePosition(pelvis_bone) or pos
@@ -221,7 +221,7 @@ hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
 
     local view = {
         origin = (thirdperson and pelvis_pos or head_pos) - ( angles:Forward() * (thirdperson and 60 or 0) ),
-        angles = angles,
+        angles = (thirdperson and angles or Angle(head_angle.p, head_angle.y, 0)),
         fov = fov,
         drawviewer = true
     }
@@ -351,13 +351,12 @@ function Cqc_throw(ply, target)
     local player_angle = ply:GetAngles()
     
     target:SetPos(player_pos + (player_angle:Forward() * 30)) -- Move the target slightly forward
+    target:SetAngles(player_angle)
 
     if target:IsPlayer() then
         target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
-    else
-        -- For NPCs, we can use a different method to ensure they face the player
-        target:SetAngles(player_angle)
     end
+
 
     ply:SetNW2Bool("is_in_cqc", true)
 
@@ -373,13 +372,6 @@ function Cqc_throw(ply, target)
     target:SVAnimationPrep("mgs4_cqc_throw_victim", function()
         target:SetNW2Bool("is_in_cqc", false)
 
-        if target:IsPlayer() then
-            target:SetEyeAngles(ply:GetAngles()) -- Set the target's eye angles to face away from the player
-        else
-            -- For NPCs, we can use a different method to ensure they face away from the player
-            target:SetAngles(ply:GetAngles())
-        end
-
         -- CQC level stun damage
         local cqc_level = ply:GetNW2Int("cqc_level", 0)
 
@@ -392,5 +384,5 @@ function Cqc_throw(ply, target)
 
 end
 
--- === Custom commands ===
+-- === Custom commands and keys ===
 concommand.Add("mgs4_cqc_throw", Cqc_check)
