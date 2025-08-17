@@ -35,11 +35,10 @@ function ent:SVAnimationPrep(anim, callback)
 
     if self:IsPlayer() then
         prevWeapon = self:GetActiveWeapon()
-        prevWeaponClass = prevWeapon:GetClass()
-        self:SetActiveWeapon( NULL )
-        self:Freeze(true)
-    else
-        self:SetCondition( COND.NPC_FREEZE )
+        if prevWeapon:IsValid() then
+            prevWeaponClass = prevWeapon:GetClass()
+            self:SetActiveWeapon( NULL )
+        end
     end
 
     self:SetVelocity(-self:GetVelocity())
@@ -47,15 +46,11 @@ function ent:SVAnimationPrep(anim, callback)
     timer.Simple(duration, function()
         
         if self:IsPlayer() then
-            self:Freeze(false)
-
             if ( !prevWeapon:IsValid() ) then
                 prevWeapon = self:Give( prevWeaponClass )
             end
 
             self:SelectWeapon( prevWeapon )
-        else
-            self:SetCondition( COND.NPC_UNFREEZE )
         end
 
         self:SetNW2Bool("animation_playing", false)
@@ -104,25 +99,38 @@ function ent:Knockout()
 end
 
 function KnockoutLoop(entity)
-    entity:SetNW2Bool("animation_playing", true)
+    if entity:GetNW2Float("psyche", 100) >= 100 then
+        entity:SetNW2Bool("is_knocked_out", false)
+        entity:SetNW2Float("psyche", 100)
+        if entity:GetNW2Int("last_nonlethal_damage_type", 0) == 0 then
+            entity:SetSVAnimation("mgs4_stun_recover_faceup", true)
+        elseif entity:GetNW2Int("last_nonlethal_damage_type", 0) == 1 then
+            entity:SetSVAnimation("mgs4_sleep_recover_facedown", true)
+        else
+            entity:SetSVAnimation("mgs4_stun_recover_facedown", true)
+        end
 
-    local knockout_type = entity:GetNW2Int("last_nonlethal_damage_type", 0)
+        if entity:IsPlayer() then
+            entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+        else
+            entity:SetCollisionGroup(COLLISION_GROUP_NPC)
+        end
 
-    if knockout_type == 2 then
-        entity:SetSVAnimation("mgs4_knocked_out_loop_faceup", true)
     else
-        entity:SetSVAnimation("mgs4_knocked_out_loop_facedown", true)
-    end
+        entity:SetNW2Bool("animation_playing", true)
 
-    local psyche = entity:GetNW2Float("psyche", 100)
-    if psyche < 100 then
-        psyche = psyche + GetConVar("mgs4_psyche_recovery"):GetFloat() * FrameTime()
-        entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
-    end
+        entity:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 
-    if entity:IsPlayer() and entity:KeyPressed(IN_USE) then
-        psyche = psyche + GetConVar("mgs4_psyche_recovery_action"):GetFloat()
-        entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
+        local psyche = entity:GetNW2Float("psyche", 100)
+        if psyche < 100 then
+            psyche = psyche + GetConVar("mgs4_psyche_recovery"):GetFloat() * FrameTime()
+            entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
+        end
+
+        if entity:IsPlayer() and entity:KeyPressed(IN_USE) then
+            psyche = psyche + GetConVar("mgs4_psyche_recovery_action"):GetFloat()
+            entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
+        end
     end
 end
 
@@ -232,25 +240,48 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
             entity:Knockout() -- Knock out the player silently
         end
 
-        if entity:GetNW2Bool("is_knocked_out", true) and entity:GetNW2Float("psyche", 100) <= 100 then
+        if entity:GetNW2Bool("is_knocked_out", true) then
             KnockoutLoop(entity)
         end
 
-        if entity:GetNW2Bool("is_knocked_out", true) and entity:GetNW2Float("psyche", 100) >= 100 then
-            entity:SetNW2Bool("is_knocked_out", false)
-            entity:SetNW2Float("psyche", 100)
+        if entity:GetNW2Bool("animation_playing", true) then
+            if entity:IsPlayer() then
+                entity:Freeze(true)
+            else
+                entity:SetCondition(COND.NPC_FREEZE)
+            end
+        else
+            if entity:IsPlayer() then
+                entity:Freeze(false)
+            else
+                entity:SetCondition(COND.NPC_UNFREEZE)
+            end
         end
     end
 end)
 
 hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
-    local str = ply:GetNWString('SVAnim')
-    local num = ply:GetNWFloat('SVAnimDelay')
-    local st = ply:GetNWFloat('SVAnimStartTime')
-    if str ~= "" then
-        ply:SetCycle((CurTime()-st)/num)
-        local current_anim = ply:LookupSequence(str)
-        return -1, current_anim
+    if ply:GetNW2Bool("is_knocked_out", false) then
+        local knockout_type = ply:GetNW2Int("last_nonlethal_damage_type", 0)
+
+        local knockout_anim
+
+        if knockout_type == 0 then
+            knockout_anim = ply:LookupSequence("mgs4_knocked_out_loop_faceup")
+        else
+            knockout_anim = ply:LookupSequence("mgs4_knocked_out_loop_facedown")
+        end
+
+        return -1, knockout_anim
+    else
+        local str = ply:GetNWString('SVAnim')
+        local num = ply:GetNWFloat('SVAnimDelay')
+        local st = ply:GetNWFloat('SVAnimStartTime')
+        if str ~= "" then
+            ply:SetCycle((CurTime()-st)/num)
+            local current_anim = ply:LookupSequence(str)
+            return -1, current_anim
+        end
     end
 end)
 
@@ -265,9 +296,9 @@ function Cqc_check(ply)
 
     if is_in_cqc then return end
 
-    if ply:IsOnGround() and !IsValid(cqc_target) then
+    if (ply:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
         Cqc_fail(ply)
-    elseif ply:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() then
+    elseif ply:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
         Cqc_throw(ply, cqc_target)
     end
 end
