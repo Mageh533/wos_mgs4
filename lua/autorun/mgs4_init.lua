@@ -1,6 +1,6 @@
 local ent = FindMetaTable("Entity")
 
--- === Helpers ===
+-- === Animation Helpers (Thanks to Hari and NizcKM) ===
 function ent:SetSVAnimation(anim, autostop)
     if not self then return end
 
@@ -33,17 +33,32 @@ function ent:SVAnimationPrep(anim, callback)
 
     self:SetNW2Bool("animation_playing", true)
 
+    local current_pos = self:GetPos()
+    local current_ang = self:GetAngles()
+    
+    local pelvis_pos
+    local pelvis_ang
+
     if self:IsPlayer() then
         prevWeapon = self:GetActiveWeapon()
         if prevWeapon:IsValid() then
             prevWeaponClass = prevWeapon:GetClass()
             self:SetActiveWeapon( NULL )
         end
+        current_ang = self:LocalEyeAngles()
     end
 
     self:SetVelocity(-self:GetVelocity())
 
+    -- Get the bone positions from before the animation ends
+    timer.Simple(duration - 0.1, function()
+        local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
+        pelvis_pos = pelvis_matrix:GetTranslation()
+        pelvis_ang = pelvis_matrix:GetAngles()
+    end)
+
     timer.Simple(duration, function()
+        self:SetPos(Vector(pelvis_pos.x, pelvis_pos.y, current_pos.z))
         
         if self:IsPlayer() then
             if ( !prevWeapon:IsValid() ) then
@@ -51,6 +66,9 @@ function ent:SVAnimationPrep(anim, callback)
             end
 
             self:SelectWeapon( prevWeapon )
+            self:SetEyeAngles(Angle(current_ang.p, current_ang.y, current_ang.r))
+        else
+            self:SetAngles(Angle(current_ang.p, pelvis_ang.y, current_ang.r))
         end
 
         self:SetNW2Bool("animation_playing", false)
@@ -61,6 +79,8 @@ function ent:SVAnimationPrep(anim, callback)
 
     end)
 end
+
+-- === Knockout ===
 
 function ent:Knockout()
     if not self then return end
@@ -134,6 +154,8 @@ function KnockoutLoop(entity)
     end
 end
 
+-- === Initialization ===
+
 hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     --- Ensure only valve biped models are affected
     if ent:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
@@ -167,7 +189,7 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Int("last_nonlethal_damage_type", 0)
 end)
 
--- Camera during CQC
+-- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
     local is_in_anim = ply:GetNW2Bool("animation_playing", false)
 
@@ -207,7 +229,7 @@ hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
     return view
 end )
 
--- Targets for players
+-- === Targets for players ===
 hook.Add("PlayerPostThink", "MGS4CQCCheck", function(ply)
     -- Check if entity in front is a valid target
     local trace = ply:GetEyeTrace()
@@ -228,7 +250,7 @@ hook.Add("PlayerPostThink", "MGS4CQCCheck", function(ply)
     ply:SetNW2Entity("cqc_target", cqc_target)
 end)
 
--- Check for entities that have reached 0 psyche
+-- === Psyche Check ===
 hook.Add("Tick", "MGS4PsycheCheck", function()
     local npc_and_players = ents.FindByClass("player") -- Find all players
     npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
@@ -259,6 +281,8 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
         end
     end
 end)
+
+-- === Animation Handling for players ===
 
 hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
     if ply:GetNW2Bool("is_knocked_out", false) then
@@ -316,11 +340,6 @@ function Cqc_fail(ply)
 
     ply:SVAnimationPrep("mgs4_cqc_fail", function()
         ply:SetNW2Bool("is_in_cqc", false)
-        -- Move player slightly forward
-        if !crouched then
-            local forward = ply:GetForward()
-            ply:SetPos(ply:GetPos() + forward * 20)
-        end
     end)
 
 end
@@ -354,8 +373,6 @@ function Cqc_throw(ply, target)
     target:SVAnimationPrep("mgs4_cqc_throw_victim", function()
         target:SetNW2Bool("is_in_cqc", false)
 
-        target:SetPos(ply:GetPos() + (ply:GetRight() * -30)) -- Move the target slightly forward
-
         if target:IsPlayer() then
             target:SetEyeAngles(ply:GetAngles()) -- Set the target's eye angles to face away from the player
         else
@@ -375,5 +392,5 @@ function Cqc_throw(ply, target)
 
 end
 
--- Custom commands
+-- === Custom commands ===
 concommand.Add("mgs4_cqc_throw", Cqc_check)
