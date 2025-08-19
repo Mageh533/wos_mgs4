@@ -122,8 +122,9 @@ if SERVER then
 
         local is_in_cqc = ply:GetNW2Bool("is_in_cqc", false)
         local cqc_target = ply:GetNW2Entity("cqc_target", Entity(0))
+        local cqc_level = ply:GetNW2Int("cqc_level", 0)
 
-        if is_in_cqc then return end
+        if is_in_cqc or cqc_level < 0 then return end
 
         if (ply:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
             Cqc_fail(ply)
@@ -234,37 +235,43 @@ if SERVER then
     end
 
     -- === Initialization ===
-    hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
+    hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(entity)
         --- Ensure only valve biped models are affected
-        if ent:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
+        if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
         --- Only affects players
-        ent:SetNW2Bool("animation_playing", false)
+        entity:SetNW2Bool("animation_playing", false)
 
         --- CQC Related Variables
-        ent:SetNW2Entity("cqc_target", Entity(0))
+        entity:SetNW2Entity("cqc_target", Entity(0))
 
-        ent:SetNW2Bool("is_in_cqc", false)
+        entity:SetNW2Bool("is_in_cqc", false)
 
-        --- CQC Level
-        --- 0 = None (Only punch punch kick combo)
-        --- 1 = Basic (Adds basic throws)
-        --- 2 = Advanced (Adds holds and higher stun damage)
-        --- 3 = Expert (Adds hold abilities such as the sop scanner and higher stun damage)
-        --- 4 = Master (Adds counters anyone with a lower CQC level and maximum stun damage)
-        ent:SetNW2Int("cqc_level", 4)
+        --- Each CQC Level grants you:
+        --- -2 = Nothing
+        --- -1 = Punch punch kick combo
+        ---  0 = CQC throw
+        ---  1 = (CQC+1) Adds grabs
+        ---  2 = (CQC+2) Higher stun damage
+        ---  3 = (CQC+3) Higher stun damage and take weapons from enemies
+        ---  4 = (CQCEX) Counter CQC and maximum stun damage
+        entity:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+
+        --- Grab abilities, requires at least CQC level 1
+        entity:SetNW2Bool("blades3", false)
+        entity:SetNW2Bool("scanner3", false)
 
         --- Psyche
         --- If it reaches 0, the entity will be knocked out
         --- Only regenerates when knocked out or if reading a magazine
-        ent:SetNW2Float("psyche", 100)
-        ent:SetNW2Bool("is_knocked_out", false)
+        entity:SetNW2Float("psyche", 100)
+        entity:SetNW2Bool("is_knocked_out", false)
 
         ---- Last Non-Lethal Damage Type
         --- 0 = CQC Stun
         --- 1 = Tranquilizers
         --- 2 = Generic Stun
-        ent:SetNW2Int("last_nonlethal_damage_type", 0)
+        entity:SetNW2Int("last_nonlethal_damage_type", 0)
     end)
 
     -- === Targets for players ===
