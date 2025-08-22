@@ -6,12 +6,16 @@ function Cqc_check(ply)
 
     local is_in_cqc = ply:GetNW2Bool("is_in_cqc", false)
     local cqc_target = ply:GetNW2Entity("cqc_target", Entity(0))
-    local cqc_level = ply:GetNW2Int("cqc_level", 0)
+    local cqc_level = ply:GetNW2Int("cqc_level", 1)
+
+    local will_grab = true -- Temp, will figure out how to handle grab controls later
 
     if is_in_cqc or cqc_level < 0 then return end
 
     if (ply:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
         Cqc_fail(ply)
+    elseif ply:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
+        Cqc_grab(ply, cqc_target)
     elseif ply:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
         Cqc_throw(ply, cqc_target)
     end
@@ -74,6 +78,63 @@ function Cqc_throw(ply, target)
 
 end
 
+-- CQC grab mechanic
+function Cqc_grab(ply, target)
+    if not IsValid(ply) or not IsValid(target) then return end
+
+    ply:SetNW2Bool("is_in_cqc", true)
+    target:SetNW2Bool("is_in_cqc", true)
+
+    ply:SetNW2Entity("cqc_grabbing", target)
+
+    -- Find out if grabbing from front or back
+    local direction = (target:GetPos() - ply:GetPos()):GetNormalized()
+    local forward = ply:GetForward()
+    local dot = forward:Dot(direction)
+
+    if dot > 0 then
+        -- Grabbing from front
+        ply:SVAnimationPrep("mgs4_grab_front")
+        target:SVAnimationPrep("mgs4_grabbed_front")
+
+        ply:SetSVAnimation("mgs4_grab_front", true)
+        target:SetSVAnimation("mgs4_grabbed_front", true)
+    else
+        -- Grabbing from back
+        ply:SVAnimationPrep("mgs4_grab_behind")
+        target:SVAnimationPrep("mgs4_grabbed_behind")
+
+        ply:SetSVAnimation("mgs4_grab_behind", true)
+        target:SetSVAnimation("mgs4_grabbed_behind", true)
+    end
+end
+
+function Cqc_grab_loop(ply)
+    if not IsValid(ply) then return end
+
+    local target = ply:GetNW2Entity("cqc_grabbing", Entity(0))
+    if not IsValid(target) then return end
+
+    -- If target or player dies, stop the loop
+    if not target:Alive() or not ply:Alive() then
+        ply:SetNW2Entity("cqc_grabbing", Entity(0))
+        ply:SetNW2Bool("is_in_cqc", false)
+        target:SetNW2Bool("is_in_cqc", false)
+        return
+    end
+
+    -- Keep the target in front of the player
+    local player_pos = ply:GetPos()
+    local player_angle = ply:GetAngles()
+    
+    target:SetPos(player_pos) -- Move the target slightly forward
+    target:SetAngles(player_angle)
+
+    if target:IsPlayer() then
+        target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+    end
+end
+
 -- === Custom commands and keys ===
 concommand.Add("mgs4_cqc_throw", Cqc_check)
 
@@ -134,6 +195,8 @@ hook.Add("InitPostEntity", "MGS4EntitySpawn", function()
         --- CQC Related Variables
         entity:SetNW2Entity("cqc_target", Entity(0))
 
+        entity:SetNW2Entity("cqc_grabbing", Entity(0))
+
         entity:SetNW2Bool("is_in_cqc", false)
 
         --- Each CQC Level grants you:
@@ -154,6 +217,7 @@ hook.Add("InitPostEntity", "MGS4EntitySpawn", function()
         --- If it reaches 0, the entity will be knocked out
         --- Only regenerates when knocked out or if reading a magazine
         entity:SetNW2Float("psyche", 100)
+        
         entity:SetNW2Bool("is_knocked_out", false)
 
         ---- Last Non-Lethal Damage Type
@@ -200,6 +264,10 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
 
         if entity:GetNW2Bool("is_knocked_out", true) then
             KnockoutLoop(entity)
+        end
+
+        if entity:GetNW2Entity("cqc_grabbing", Entity(0)) ~= Entity(0) then
+            Cqc_grab_loop(entity)
         end
 
         if entity:GetNW2Bool("animation_playing", true) then

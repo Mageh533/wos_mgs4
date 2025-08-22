@@ -23,9 +23,9 @@ hook.Add("HUDPaint", "MGS4HUDPaint", function()
 
     -- Player skills hud (always present regardless of gamemode)
 
-    local cqc_level = ply:GetNW2Int("cqc_level", 0)
-    local blades3 = ply:GetNW2Bool("blades3", false)
-    local scanner3 = ply:GetNW2Bool("scanner3", false)
+    local cqc_level = ply:GetNW2Int("cqc_level", 3)
+    local blades3 = ply:GetNW2Bool("blades3", true)
+    local scanner3 = ply:GetNW2Bool("scanner3", true)
 
     local hud_items = {}
 
@@ -57,7 +57,7 @@ hook.Add("HUDPaint", "MGS4HUDPaint", function()
     end
 
     -- Psyche in Hud (Only present in Sandbox or other modes that aren't TTT)
-    
+
     local psyche = ply:GetNW2Float("psyche", 0)
 
     local xOffset = 0
