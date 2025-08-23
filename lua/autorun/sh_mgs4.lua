@@ -28,23 +28,12 @@ function ent:SVAnimationPrep(anim, callback)
     local current_anim = self:LookupSequence(anim)
     local duration = self:SequenceDuration(current_anim)
 
-    local prevWeapon
-    local prevWeaponClass
-
     self:SetNW2Bool("animation_playing", true)
 
     local current_pos = self:GetPos()
     
     local pelvis_pos
     local head_angle
-
-    if self:IsPlayer() then
-        prevWeapon = self:GetActiveWeapon()
-        if prevWeapon:IsValid() then
-            prevWeaponClass = prevWeapon:GetClass()
-            self:SetActiveWeapon( NULL )
-        end
-    end
 
     self:SetVelocity(-self:GetVelocity())
 
@@ -61,11 +50,6 @@ function ent:SVAnimationPrep(anim, callback)
         self:SetPos(Vector(pelvis_pos.x, pelvis_pos.y, current_pos.z))
         
         if self:IsPlayer() then
-            if ( !prevWeapon:IsValid() ) then
-                prevWeapon = self:Give( prevWeaponClass )
-            end
-
-            self:SelectWeapon( prevWeapon )
             self:SetEyeAngles(Angle(head_angle.p, head_angle.y, 0))
         else
             self:SetAngles(Angle(0, head_angle.y, 0))
@@ -85,8 +69,6 @@ end
 function ent:Knockout()
     if not self then return end
 
-    self:SetNW2Bool("is_knocked_out", true)
-
     local knockout_type = self:GetNW2Int("last_nonlethal_damage_type", 0)
     local crouched
 
@@ -98,20 +80,30 @@ function ent:Knockout()
 
     if knockout_type == 1 then
         if crouched then
-            self:SVAnimationPrep("mgs4_sleep_crouched")
+            self:SVAnimationPrep("mgs4_sleep_crouched", function()
+                self:SetNW2Bool("is_knocked_out", true)
+            end)
             self:SetSVAnimation("mgs4_sleep_crouched", true)
         else
-            self:SVAnimationPrep("mgs4_sleep")
+            self:SVAnimationPrep("mgs4_sleep", function()
+                self:SetNW2Bool("is_knocked_out", true)
+            end)
             self:SetSVAnimation("mgs4_sleep", true)
         end
     elseif knockout_type == 2 then
         if crouched then
-            self:SVAnimationPrep("mgs4_stun_crouched")
+            self:SVAnimationPrep("mgs4_stun_crouched", function()
+                self:SetNW2Bool("is_knocked_out", true)
+            end)
             self:SetSVAnimation("mgs4_stun_crouched", true)
         else
-            self:SVAnimationPrep("mgs4_stun")
+            self:SVAnimationPrep("mgs4_stun", function()
+                self:SetNW2Bool("is_knocked_out", true)
+            end)
             self:SetSVAnimation("mgs4_stun", true)
         end
+    else
+        self:SetNW2Bool("is_knocked_out", true)
     end
 end
 
@@ -129,6 +121,9 @@ hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
         end
 
         return -1, knockout_anim
+    elseif ply:GetNW2Bool("is_grabbed", false) then
+        local grabbed_anim = ply:LookupSequence("mgs4_grabbed_loop")
+        return -1, grabbed_anim
     else
         local str = ply:GetNWString('SVAnim')
         local num = ply:GetNWFloat('SVAnimDelay')

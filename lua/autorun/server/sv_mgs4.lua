@@ -8,7 +8,7 @@ function Cqc_check(ply)
     local cqc_target = ply:GetNW2Entity("cqc_target", Entity(0))
     local cqc_level = ply:GetNW2Int("cqc_level", 1)
 
-    local will_grab = false -- Temp, will figure out how to handle grab controls later
+    local will_grab = true -- Temp, will figure out how to handle grab controls later
 
     if is_in_cqc or cqc_level < 0 then return end
 
@@ -42,7 +42,7 @@ end
 function Cqc_throw(ply, target)
     ply:SetNW2Bool("is_in_cqc", true)
     ply:SetNW2Entity("cqc_grabbing", target)
-    ply:SetNW2String("cqc_type", "throw")
+    ply:SetNW2Int("cqc_type", 1)
 
     ply:SVAnimationPrep("mgs4_cqc_throw", function()
         ply:SetNW2Bool("is_in_cqc", false)
@@ -75,26 +75,50 @@ function Cqc_grab(ply, target)
 
     ply:SetNW2Bool("is_in_cqc", true)
     ply:SetNW2Entity("cqc_grabbing", target)
-    ply:SetNW2String("cqc_type", "grab")
 
     target:SetNW2Bool("is_in_cqc", true)
     
     -- Find out if grabbing from front or back
-    local direction = (target:GetPos() - ply:GetPos()):GetNormalized()
-    local forward = ply:GetForward()
-    local dot = forward:Dot(direction)
+    local vec = ( ply:GetPos() - target:GetPos() ):GetNormal():Angle().y
+    local targetAngle = target:EyeAngles().y
+    
+    if targetAngle > 360 then
+        targetAngle = targetAngle - 360
+    end
+    if targetAngle < 0 then
+        targetAngle = targetAngle + 360
+    end
+    
+    local angleAround = vec - targetAngle
+    
+    if angleAround > 360 then
+        angleAround = angleAround - 360
+    end
+    if angleAround < 0 then
+        angleAround = angleAround + 360
+    end
 
-    if dot > 0 then
+    if angleAround > 135 and angleAround <= 225 then
         -- Grabbing from back
-        ply:SVAnimationPrep("mgs4_grab_behind")
-        target:SVAnimationPrep("mgs4_grabbed_behind")
+        ply:SetNW2Int("cqc_type", 4)
+        ply:SVAnimationPrep("mgs4_grab_behind", function ()
+            ply:SetNW2Int("cqc_type", 2)
+        end)
+        target:SVAnimationPrep("mgs4_grabbed_behind", function (ent)
+            ent:SetNW2Bool("is_grabbed", true)
+        end)
 
         ply:SetSVAnimation("mgs4_grab_behind", true)
         target:SetSVAnimation("mgs4_grabbed_behind", true)
     else
         -- Grabbing from front
-        ply:SVAnimationPrep("mgs4_grab_front")
-        target:SVAnimationPrep("mgs4_grabbed_front")
+        ply:SetNW2Int("cqc_type", 3)
+        ply:SVAnimationPrep("mgs4_grab_front", function ()
+            ply:SetNW2Int("cqc_type", 2)
+        end)
+        target:SVAnimationPrep("mgs4_grabbed_front", function (ent)
+            ent:SetNW2Bool("is_grabbed", true)
+        end)
 
         ply:SetSVAnimation("mgs4_grab_front", true)
         target:SetSVAnimation("mgs4_grabbed_front", true)
@@ -117,14 +141,45 @@ function Cqc_loop(ply, type)
         return
     end
 
-    if type == "throw" then
-        print("Throw loop")
+    if type == 1 then
         -- Ensure target is facing the player
         local player_pos = ply:GetPos()
         local player_angle = ply:GetAngles()
         
         target:SetPos(player_pos + (player_angle:Forward() * 30)) -- Move the target slightly forward
         target:SetAngles(player_angle)
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+        end
+    elseif type == 2 then
+        local player_pos = ply:GetPos()
+        local player_angle = ply:GetAngles()
+        
+        target:SetPos(player_pos + (player_angle:Forward() * 10)) -- Move the target slightly forward
+        target:SetAngles(player_angle)
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
+        end
+    elseif type == 4 then
+        -- Ensure target is facing the player
+        local player_pos = ply:GetPos()
+        local player_angle = ply:GetAngles()
+
+        target:SetPos(player_pos) -- Move the target slightly forward
+        target:SetAngles(player_angle)
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
+        end
+    elseif type == 3 then
+        -- Ensure target is facing the player
+        local player_pos = ply:GetPos()
+        local player_angle = ply:GetAngles()
+
+        target:SetPos(player_pos) -- Move the target slightly forward
+        target:SetAngles(player_angle + Angle(0, 180, 0))
 
         if target:IsPlayer() then
             target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
@@ -188,8 +243,15 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Entity("cqc_grabbing", Entity(0))
 
     ent:SetNW2Bool("is_in_cqc", false)
+    ent:SetNW2Bool("is_grabbed", false)
 
-    ent:SetNW2String("cqc_type", "")
+    --- Type of CQC action currently performing
+    --- 0 = Nothing
+    --- 1 = Throw
+    --- 2 = Grab loop
+    --- 3 = Grab front
+    --- 4 = Grab behind
+    ent:SetNW2Int("cqc_type", 0)
 
     --- Each CQC Level grants you:
     --- -2 = Nothing
@@ -225,13 +287,31 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Entity("cqc_target", Entity(0))
     ply:SetNW2Entity("cqc_grabbing", Entity(0))
     ply:SetNW2Bool("is_in_cqc", false)
-    ply:SetNW2String("cqc_type", "")
+    ply:SetNW2Bool("is_grabbed", false)
+    ply:SetNW2Int("cqc_type", 0)
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
     ply:SetNW2Bool("blades3", false)
     ply:SetNW2Bool("scanner3", false)
     ply:SetNW2Float("psyche", 100)
     ply:SetNW2Bool("is_knocked_out", false)
     ply:SetNW2Int("last_nonlethal_damage_type", 0)
+end)
+
+-- === Non lethal Damage Handling ===
+hook.Add("EntityTakeDamage", "MGS4EntityTakeDamage", function(ent, dmginfo)
+    if not IsValid(ent) then return end
+
+    -- Check if the entity is a player or NPC
+    if ent:IsPlayer() or ent:IsNPC() then
+        if ent:GetNW2Bool("is_knocked_out", false) then return end
+
+        if dmginfo:GetDamageType() == DMG_CLUB or dmginfo:GetDamageType() == DMG_SONIC or dmginfo:GetDamageType() == DMG_CRUSH then
+            local psyche = ent:GetNW2Float("psyche", 100)
+            psyche = psyche - dmginfo:GetDamage() * 2
+            ent:SetNW2Float("psyche", math.max(psyche, 0)) -- Cap at 0
+            ent:SetNW2Int("last_nonlethal_damage_type", 2) -- Generic stun
+        end
+    end
 end)
 
 -- === Targets for players ===
@@ -263,7 +343,7 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
     for _, entity in ipairs(npc_and_players) do
         if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
-        if entity:GetNW2Float("psyche", 100) <= 0 and not entity:GetNW2Bool("is_knocked_out", false) then
+        if entity:GetNW2Float("psyche", 100) <= 0 and not entity:GetNW2Bool("is_knocked_out", false) and not entity:GetNW2Bool("animation_playing", false) then
             entity:Knockout() -- Knock out the player silently
         end
 
@@ -272,7 +352,7 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
         end
 
         if entity:GetNW2Entity("cqc_grabbing", Entity(0)) ~= Entity(0) then
-            Cqc_loop(entity, entity:GetNW2String("cqc_type", ""))
+            Cqc_loop(entity, entity:GetNW2Int("cqc_type", 0))
         end
 
         if entity:GetNW2Bool("animation_playing", true) then

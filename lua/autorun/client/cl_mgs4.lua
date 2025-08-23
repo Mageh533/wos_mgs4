@@ -68,6 +68,15 @@ hook.Add("HUDPaint", "MGS4HUDPaint", function()
 
 
     draw.RoundedBox( 10, 315 + xOffset, 973, 245, 80, Color(0,0,0,80))
-    draw.SimpleText("PSYCHE", "HudDefault", 335 + xOffset, 1015, Color(255,255,0,255), TEXT_ALIGN_LEFT)
-    draw.SimpleText(psyche, "MGS4HudNumbers", 440 + xOffset, 975, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+    draw.SimpleText("PSYCHE", "HudDefault", 335 + xOffset, 1015, Color(255,205,0,255), TEXT_ALIGN_LEFT)
+    draw.SimpleText(tostring(math.Round(psyche, 0)), "MGS4HudNumbers", 440 + xOffset, 975, Color(255,205,0,255), TEXT_ALIGN_LEFT)
+end)
+
+
+hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
+    local target = LocalPlayer():GetEyeTrace().Entity
+    if IsValid(target) and target:IsPlayer() then
+        local psyche = target:GetNW2Float("psyche", 0)
+        draw.SimpleText(tostring(math.Round(psyche, 0)) .. "%", "TargetIDSmall", ScrW() / 2, ScrH() / 2 + 70, Color(255,205,0,255), TEXT_ALIGN_CENTER)
+    end
 end)
