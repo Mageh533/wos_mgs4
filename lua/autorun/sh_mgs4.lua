@@ -34,10 +34,9 @@ function ent:SVAnimationPrep(anim, callback)
     self:SetNW2Bool("animation_playing", true)
 
     local current_pos = self:GetPos()
-    local current_ang = self:GetAngles()
     
     local pelvis_pos
-    local pelvis_ang
+    local head_angle
 
     if self:IsPlayer() then
         prevWeapon = self:GetActiveWeapon()
@@ -45,7 +44,6 @@ function ent:SVAnimationPrep(anim, callback)
             prevWeaponClass = prevWeapon:GetClass()
             self:SetActiveWeapon( NULL )
         end
-        current_ang = self:LocalEyeAngles()
     end
 
     self:SetVelocity(-self:GetVelocity())
@@ -54,10 +52,12 @@ function ent:SVAnimationPrep(anim, callback)
     timer.Simple(duration - 0.1, function()
         local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
         pelvis_pos = pelvis_matrix:GetTranslation()
-        pelvis_ang = pelvis_matrix:GetAngles()
+        head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
     end)
 
     timer.Simple(duration, function()
+        if self:Alive() == false then return end
+
         self:SetPos(Vector(pelvis_pos.x, pelvis_pos.y, current_pos.z))
         
         if self:IsPlayer() then
@@ -66,9 +66,9 @@ function ent:SVAnimationPrep(anim, callback)
             end
 
             self:SelectWeapon( prevWeapon )
-            self:SetEyeAngles(Angle(current_ang.p, current_ang.y, current_ang.r))
+            self:SetEyeAngles(Angle(head_angle.p, head_angle.y, 0))
         else
-            self:SetAngles(Angle(current_ang.p, pelvis_ang.y, current_ang.r))
+            self:SetAngles(Angle(0, head_angle.y, 0))
         end
 
         self:SetNW2Bool("animation_playing", false)

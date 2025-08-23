@@ -23,9 +23,9 @@ hook.Add("HUDPaint", "MGS4HUDPaint", function()
 
     -- Player skills hud (always present regardless of gamemode)
 
-    local cqc_level = ply:GetNW2Int("cqc_level", 3)
-    local blades3 = ply:GetNW2Bool("blades3", true)
-    local scanner3 = ply:GetNW2Bool("scanner3", true)
+    local cqc_level = ply:GetNW2Int("cqc_level", 0)
+    local blades3 = ply:GetNW2Bool("blades3", false)
+    local scanner3 = ply:GetNW2Bool("scanner3", false)
 
     local hud_items = {}
 

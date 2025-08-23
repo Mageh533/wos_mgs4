@@ -8,7 +8,7 @@ function Cqc_check(ply)
     local cqc_target = ply:GetNW2Entity("cqc_target", Entity(0))
     local cqc_level = ply:GetNW2Int("cqc_level", 1)
 
-    local will_grab = true -- Temp, will figure out how to handle grab controls later
+    local will_grab = false -- Temp, will figure out how to handle grab controls later
 
     if is_in_cqc or cqc_level < 0 then return end
 
@@ -40,25 +40,13 @@ end
 
 -- CQC Throw mechanic
 function Cqc_throw(ply, target)
-    -- Ensure target is facing the player
-    local player_pos = ply:GetPos()
-    local player_angle = ply:GetAngles()
-    
-    target:SetPos(player_pos + (player_angle:Forward() * 30)) -- Move the target slightly forward
-    target:SetAngles(player_angle)
-
-    if target:IsPlayer() then
-        target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
-    end
-
-
     ply:SetNW2Bool("is_in_cqc", true)
+    ply:SetNW2Entity("cqc_grabbing", target)
+    ply:SetNW2String("cqc_type", "throw")
 
     ply:SVAnimationPrep("mgs4_cqc_throw", function()
         ply:SetNW2Bool("is_in_cqc", false)
-        
-        -- Look to the left
-        ply:SetEyeAngles(ply:GetAngles() + Angle(0, 90, 0))
+        ply:SetNW2Entity("cqc_grabbing", Entity(0))
     end)
 
     target:SetNW2Int("last_nonlethal_damage_type", 0)
@@ -67,9 +55,12 @@ function Cqc_throw(ply, target)
         target:SetNW2Bool("is_in_cqc", false)
 
         -- CQC level stun damage
-        local cqc_level = ply:GetNW2Int("cqc_level", 0)
+        local cqc_level = ply:GetNW2Int("cqc_level", 4)
+        local stun_damage = 25 * cqc_level
 
-        target:SetNW2Float("psyche", 25 * cqc_level)
+        local target_psyche = target:GetNW2Float("psyche", 100)
+
+        target:SetNW2Float("psyche", target_psyche - stun_damage)
 
     end)
     
@@ -83,37 +74,40 @@ function Cqc_grab(ply, target)
     if not IsValid(ply) or not IsValid(target) then return end
 
     ply:SetNW2Bool("is_in_cqc", true)
-    target:SetNW2Bool("is_in_cqc", true)
-
     ply:SetNW2Entity("cqc_grabbing", target)
+    ply:SetNW2String("cqc_type", "grab")
 
+    target:SetNW2Bool("is_in_cqc", true)
+    
     -- Find out if grabbing from front or back
     local direction = (target:GetPos() - ply:GetPos()):GetNormalized()
     local forward = ply:GetForward()
     local dot = forward:Dot(direction)
 
     if dot > 0 then
-        -- Grabbing from front
-        ply:SVAnimationPrep("mgs4_grab_front")
-        target:SVAnimationPrep("mgs4_grabbed_front")
-
-        ply:SetSVAnimation("mgs4_grab_front", true)
-        target:SetSVAnimation("mgs4_grabbed_front", true)
-    else
         -- Grabbing from back
         ply:SVAnimationPrep("mgs4_grab_behind")
         target:SVAnimationPrep("mgs4_grabbed_behind")
 
         ply:SetSVAnimation("mgs4_grab_behind", true)
         target:SetSVAnimation("mgs4_grabbed_behind", true)
+    else
+        -- Grabbing from front
+        ply:SVAnimationPrep("mgs4_grab_front")
+        target:SVAnimationPrep("mgs4_grabbed_front")
+
+        ply:SetSVAnimation("mgs4_grab_front", true)
+        target:SetSVAnimation("mgs4_grabbed_front", true)
     end
 end
 
-function Cqc_grab_loop(ply)
+function Cqc_loop(ply, type)
     if not IsValid(ply) then return end
 
     local target = ply:GetNW2Entity("cqc_grabbing", Entity(0))
     if not IsValid(target) then return end
+
+    if type == "" then return end
 
     -- If target or player dies, stop the loop
     if not target:Alive() or not ply:Alive() then
@@ -123,16 +117,20 @@ function Cqc_grab_loop(ply)
         return
     end
 
-    -- Keep the target in front of the player
-    local player_pos = ply:GetPos()
-    local player_angle = ply:GetAngles()
-    
-    target:SetPos(player_pos) -- Move the target slightly forward
-    target:SetAngles(player_angle)
+    if type == "throw" then
+        print("Throw loop")
+        -- Ensure target is facing the player
+        local player_pos = ply:GetPos()
+        local player_angle = ply:GetAngles()
+        
+        target:SetPos(player_pos + (player_angle:Forward() * 30)) -- Move the target slightly forward
+        target:SetAngles(player_angle)
 
-    if target:IsPlayer() then
-        target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+        end
     end
+
 end
 
 -- === Custom commands and keys ===
@@ -180,53 +178,60 @@ function KnockoutLoop(entity)
 end
 
 -- === Initialization ===
-hook.Add("InitPostEntity", "MGS4EntitySpawn", function()
-    local npc_and_players = ents.FindByClass("player") -- Find all players
-    npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
+hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
+    --- Only affects players
+    ent:SetNW2Bool("animation_playing", false)
 
-    for _, entity in ipairs(npc_and_players) do
+    --- CQC Related Variables
+    ent:SetNW2Entity("cqc_target", Entity(0))
 
-        --- Ensure only valve biped models are affected
-        if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
+    ent:SetNW2Entity("cqc_grabbing", Entity(0))
 
-        --- Only affects players
-        entity:SetNW2Bool("animation_playing", false)
+    ent:SetNW2Bool("is_in_cqc", false)
 
-        --- CQC Related Variables
-        entity:SetNW2Entity("cqc_target", Entity(0))
+    ent:SetNW2String("cqc_type", "")
 
-        entity:SetNW2Entity("cqc_grabbing", Entity(0))
+    --- Each CQC Level grants you:
+    --- -2 = Nothing
+    --- -1 = Punch punch kick combo
+    ---  0 = CQC throw
+    ---  1 = (CQC+1) Grabs
+    ---  2 = (CQC+2) Higher stun damage
+    ---  3 = (CQC+3) Higher stun damage and take weapons from enemies
+    ---  4 = (CQCEX) Counter CQC and maximum stun damage
+    ent:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
 
-        entity:SetNW2Bool("is_in_cqc", false)
+    --- Grab abilities, requires at least CQC level 1
+    ent:SetNW2Bool("blades3", false)
+    ent:SetNW2Bool("scanner3", false)
 
-        --- Each CQC Level grants you:
-        --- -2 = Nothing
-        --- -1 = Punch punch kick combo
-        ---  0 = CQC throw
-        ---  1 = (CQC+1) Grabs
-        ---  2 = (CQC+2) Higher stun damage
-        ---  3 = (CQC+3) Higher stun damage and take weapons from enemies
-        ---  4 = (CQCEX) Counter CQC and maximum stun damage
-        entity:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+    --- Psyche
+    --- If it reaches 0, the entity will be knocked out
+    --- Only regenerates when knocked out or if reading a magazine
+    ent:SetNW2Float("psyche", 100)
 
-        --- Grab abilities, requires at least CQC level 1
-        entity:SetNW2Bool("blades3", false)
-        entity:SetNW2Bool("scanner3", false)
+    ent:SetNW2Bool("is_knocked_out", false)
 
-        --- Psyche
-        --- If it reaches 0, the entity will be knocked out
-        --- Only regenerates when knocked out or if reading a magazine
-        entity:SetNW2Float("psyche", 100)
-        
-        entity:SetNW2Bool("is_knocked_out", false)
+    ---- Last Non-Lethal Damage Type
+    --- 0 = CQC Stun
+    --- 1 = Tranquilizers
+    --- 2 = Generic Stun
+    ent:SetNW2Int("last_nonlethal_damage_type", 0)
+end)
 
-        ---- Last Non-Lethal Damage Type
-        --- 0 = CQC Stun
-        --- 1 = Tranquilizers
-        --- 2 = Generic Stun
-        entity:SetNW2Int("last_nonlethal_damage_type", 0)
-
-    end
+-- Cleanup on player death
+hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
+    ply:SetNW2Bool("animation_playing", false)
+    ply:SetNW2Entity("cqc_target", Entity(0))
+    ply:SetNW2Entity("cqc_grabbing", Entity(0))
+    ply:SetNW2Bool("is_in_cqc", false)
+    ply:SetNW2String("cqc_type", "")
+    ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+    ply:SetNW2Bool("blades3", false)
+    ply:SetNW2Bool("scanner3", false)
+    ply:SetNW2Float("psyche", 100)
+    ply:SetNW2Bool("is_knocked_out", false)
+    ply:SetNW2Int("last_nonlethal_damage_type", 0)
 end)
 
 -- === Targets for players ===
@@ -267,7 +272,7 @@ hook.Add("Tick", "MGS4PsycheCheck", function()
         end
 
         if entity:GetNW2Entity("cqc_grabbing", Entity(0)) ~= Entity(0) then
-            Cqc_grab_loop(entity)
+            Cqc_loop(entity, entity:GetNW2String("cqc_type", ""))
         end
 
         if entity:GetNW2Bool("animation_playing", true) then
