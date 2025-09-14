@@ -227,12 +227,13 @@ function ent:Cqc_punch()
         self:SVAnimationPrep("mgs4_kick", function()
             self:SetNW2Int("cqc_punch_combo", 0)
             self:SetNW2Bool("is_in_cqc", false)
+        end)
+        timer.Simple(0.35, function()
             local tr_target = self:TraceBoxForward().Entity
             if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
                 tr_target:SetNW2Int("last_nonlethal_damage_type", 0)
                 tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 50, 0))
                 tr_target:KnockedBack(self:GetForward())
-                tr_target:SetVelocity(-tr_target:GetVelocity())
             end
         end)
     end
