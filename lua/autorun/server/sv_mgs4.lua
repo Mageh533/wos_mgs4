@@ -28,8 +28,8 @@ function KnockoutLoop(entity)
         entity:GetUp()
     else
         entity:SetNW2Bool("animation_playing", true)
-
         entity:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+        entity:SetVelocity(-entity:GetVelocity())
 
         local psyche = entity:GetNW2Float("psyche", 100)
         if psyche < 100 then
@@ -56,6 +56,7 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
 
     ent:SetNW2Bool("is_in_cqc", false)
     ent:SetNW2Bool("is_grabbed", false)
+    ent:SetNW2Bool("is_choking", false)
 
     --- Type of CQC action currently performing
     --- 0 = Nothing
@@ -108,8 +109,13 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Entity("cqc_grabbing", Entity(0))
     ply:SetNW2Bool("is_in_cqc", false)
     ply:SetNW2Bool("is_grabbed", false)
+    ply:SetNW2Bool("is_choking", false)
     ply:SetNW2Int("cqc_type", 0)
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+    ply:SetNW2Bool("cqc_button_held", false)
+    ply:SetNW2Float("cqc_button_hold_time", 0)
+    ply:SetNW2Float("cqc_punch_time_left", 0)
+    ply:SetNW2Int("cqc_punch_combo", 0) -- 1 = First punch, 2 = Second punch, 3 = Kick
     ply:SetNW2Bool("blades3", true)
     ply:SetNW2Bool("scanner3", true)
     ply:SetNW2Float("psyche", 100)
@@ -182,7 +188,7 @@ hook.Add("Tick", "MGS4Tick", function()
         end
 
         -- Hold the button for CQC Throw and Grab
-        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.5 then
+        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.5 and entity:GetNW2Int("cqc_type", 0) ~= 2 then
             entity:SetNW2Bool("cqc_button_held", false)
             entity:SetNW2Float("cqc_button_hold_time", 0)
             entity:Cqc_check()

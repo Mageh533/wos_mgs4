@@ -39,7 +39,7 @@ function ent:SVAnimationPrep(anim, callback)
     self:SetVelocity(-self:GetVelocity())
 
     -- Get the bone positions from before the animation ends
-    timer.Simple(duration - 0.1, function()
+    timer.Simple(duration - 0.01, function()
         local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
         pelvis_pos = pelvis_matrix:GetTranslation()
         head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
@@ -210,7 +210,6 @@ function ent:Cqc_punch()
                 tr_target:SetVelocity(-tr_target:GetVelocity())
             end
         end)
-
     elseif combo_count == 1 then
         self:SetSVAnimation("mgs4_punch_punch", true)
         self:SVAnimationPrep("mgs4_punch_punch", function()
@@ -223,7 +222,6 @@ function ent:Cqc_punch()
                 tr_target:SetVelocity(-tr_target:GetVelocity())
             end
         end)
-
     elseif combo_count == 2 then
         self:SetSVAnimation("mgs4_kick", true)
         self:SVAnimationPrep("mgs4_kick", function()
@@ -250,6 +248,7 @@ function ent:Cqc_throw(target)
     self:SVAnimationPrep("mgs4_cqc_throw", function()
         self:SetNW2Bool("is_in_cqc", false)
         self:SetNW2Entity("cqc_grabbing", Entity(0))
+        self:SetNW2Int("cqc_type", 0)
     end)
 
     target:SetNW2Int("last_nonlethal_damage_type", 0)
@@ -337,10 +336,18 @@ function ent:Cqc_loop()
     if type == "" then return end
 
     -- If target or player dies, stop the loop
-    if not target:Alive() or not self:Alive() then
-        self:SetNW2Entity("cqc_grabbing", Entity(0))
+    if not target:Alive() or not self:Alive() or target:GetNW2Float("psyche", 100) <= 0 or self:GetNW2Float("psyche", 100) <= 0 then
         self:SetNW2Bool("is_in_cqc", false)
+        self:SetNW2Entity("cqc_grabbing", Entity(0))
+        self:SetNW2Int("cqc_type", 0)
+
+        self:SVAnimationPrep("mgs4_grab_letgo")
+        self:SetSVAnimation("mgs4_grab_letgo", true)
+
         target:SetNW2Bool("is_in_cqc", false)
+        target:SetNW2Bool("is_grabbed", false)
+        target:SetNW2Bool("is_choking", false)
+
         return
     end
 
@@ -361,6 +368,15 @@ function ent:Cqc_loop()
 
         target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
         target:SetAngles(player_angle)
+
+        -- Holding the CQC button starts chocking
+        if self:GetNW2Bool("cqc_button_held", false) then
+            target:SetNW2Float("psyche", math.max(target:GetNW2Float("psyche", 100) - 0.5, 0))
+            target:SetNW2Int("last_nonlethal_damage_type", 2)
+            target:SetNW2Bool("is_choking", true)
+        else
+            target:SetNW2Bool("is_choking", false)
+        end
 
         if target:IsPlayer() then
             target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
@@ -424,11 +440,29 @@ hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
         end
 
         return -1, knockout_anim
+    -- == CQC grab anims ==
     elseif ply:GetNW2Entity("cqc_grabbing", Entity(0)) ~= Entity(0) and ply:GetNW2Int("cqc_type", 0) == 2 then
-        local grabbing_anim = ply:LookupSequence("mgs4_grab_loop")
+        local grabbing_anim
+        local grabbing_loop = ply:LookupSequence("mgs4_grab_loop")
+        local target = ply:GetNW2Entity("cqc_grabbing", Entity(0))
+
+        if target:GetNW2Bool("is_choking", false) then
+            grabbing_anim = ply:LookupSequence("mgs4_grab_chocking")
+        else
+            grabbing_anim = grabbing_loop
+        end
+
         return -1, grabbing_anim
     elseif ply:GetNW2Bool("is_grabbed", false) then
-        local grabbed_anim = ply:LookupSequence("mgs4_grabbed_loop")
+        local grabbed_anim
+        local grabbed_loop = ply:LookupSequence("mgs4_grabbed_loop")
+
+        if ply:GetNW2Bool("is_choking", false) then
+            grabbed_anim = ply:LookupSequence("mgs4_grabbed_chocking")
+        else
+            grabbed_anim = grabbed_loop
+        end
+
         return -1, grabbed_anim
     else
         local str = ply:GetNWString('SVAnim')
@@ -444,7 +478,7 @@ end)
 
 -- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-    local is_in_anim = ply:GetNW2Bool("animation_playing", false)
+    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or ply:GetNW2Int("cqc_type", 0) == 2
 
     if is_in_anim == false then return end
 
