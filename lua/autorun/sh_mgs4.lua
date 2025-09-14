@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field
 local ent = FindMetaTable("Entity")
 
 -- === Animation Helpers (Thanks to Hari and NizcKM) ===
@@ -50,7 +51,7 @@ function ent:SVAnimationPrep(anim, callback)
         self:SetPos(Vector(pelvis_pos.x, pelvis_pos.y, current_pos.z))
         
         if self:IsPlayer() then
-            self:SetEyeAngles(Angle(head_angle.p, head_angle.y, 0))
+            self:SetEyeAngles(Angle(0, head_angle.y, 0))
         else
             self:SetAngles(Angle(0, head_angle.y, 0))
         end
@@ -64,8 +65,28 @@ function ent:SVAnimationPrep(anim, callback)
     end)
 end
 
--- === Knockout ===
+-- === Helper to trace a box in front of an entity ===
+function ent:TraceBoxForward()
+    if not self then return end
 
+    local start_pos = self:GetPos() + Vector(0, 0, 40) -- Start slightly above ground
+    local end_pos = start_pos + (self:GetForward() * 32)
+
+    local mins = Vector(-16, -16, 0)
+    local maxs = Vector(16, 16, 72)
+
+    local tr = util.TraceHull({
+        start = start_pos,
+        endpos = end_pos,
+        mins = mins,
+        maxs = maxs,
+        filter = self
+    })
+
+    return tr
+end
+
+-- === Knockout ===
 function ent:Knockout()
     if not self then return end
 
@@ -107,6 +128,47 @@ function ent:Knockout()
     end
 end
 
+-- === Some misc actions ===
+function ent:KnockedBack(forward)
+    if not self then return end
+
+    if self:IsPlayer() then
+        local yaw = forward:Angle().y
+        self:SetEyeAngles(Angle(0, yaw + 180, 0))
+    else
+        local yaw = self:GetAngles().y
+        self:SetAngles(Angle(0, yaw + 180, 0))
+    end
+
+    self:SVAnimationPrep("mgs4_knocked_back", function()
+        if self:GetNW2Float("psyche", 100) > 0 then
+            self:GetUp()
+        end
+    end)
+    self:SetSVAnimation("mgs4_knocked_back", true)
+end
+
+function ent:GetUp()
+    if not self then return end
+
+    if self:GetNW2Int("last_nonlethal_damage_type", 0) == 0 then
+        self:SVAnimationPrep("mgs4_stun_recover_faceup")
+        self:SetSVAnimation("mgs4_stun_recover_faceup", true)
+    elseif self:GetNW2Int("last_nonlethal_damage_type", 0) == 1 then
+        self:SVAnimationPrep("mgs4_sleep_recover_facedown")
+        self:SetSVAnimation("mgs4_sleep_recover_facedown", true)
+    else
+        self:SVAnimationPrep("mgs4_stun_recover_facedown")
+        self:SetSVAnimation("mgs4_stun_recover_facedown", true)
+    end
+
+    if self:IsPlayer() then
+        self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+    else
+        self:SetCollisionGroup(COLLISION_GROUP_NPC)
+    end
+end
+
 -- === CQC Actions ===
 function ent:Cqc_fail()
     if not self then return end
@@ -130,24 +192,50 @@ function ent:Cqc_punch()
 
     self:SetNW2Float("cqc_punch_time_left", 0.5) -- Time to extend the punch combo
 
+    if self:GetNW2Bool("is_in_cqc", false) then return end
+
+    self:SetNW2Bool("is_in_cqc", true)
+
     local combo_count = self:GetNW2Int("cqc_punch_combo", 0)
 
     if combo_count == 0 then
-        self:SetSVAnimation("mgs4_punch_punch", true)
-        self:SVAnimationPrep("mgs4_punch_punch", function()
+        self:SetSVAnimation("mgs4_punch", true)
+        self:SVAnimationPrep("mgs4_punch", function()
             self:SetNW2Int("cqc_punch_combo", 1)
+            self:SetNW2Bool("is_in_cqc", false)
+            local tr_target = self:TraceBoxForward().Entity
+            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+                tr_target:SetNW2Int("last_nonlethal_damage_type", 2)
+                tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 10, 0))
+                tr_target:SetVelocity(-tr_target:GetVelocity())
+            end
         end)
 
     elseif combo_count == 1 then
         self:SetSVAnimation("mgs4_punch_punch", true)
         self:SVAnimationPrep("mgs4_punch_punch", function()
             self:SetNW2Int("cqc_punch_combo", 2)
+            self:SetNW2Bool("is_in_cqc", false)
+            local tr_target = self:TraceBoxForward().Entity
+            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+                tr_target:SetNW2Int("last_nonlethal_damage_type", 2)
+                tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 10, 0))
+                tr_target:SetVelocity(-tr_target:GetVelocity())
+            end
         end)
 
     elseif combo_count == 2 then
         self:SetSVAnimation("mgs4_kick", true)
         self:SVAnimationPrep("mgs4_kick", function()
             self:SetNW2Int("cqc_punch_combo", 0)
+            self:SetNW2Bool("is_in_cqc", false)
+            local tr_target = self:TraceBoxForward().Entity
+            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+                tr_target:SetNW2Int("last_nonlethal_damage_type", 0)
+                tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 50, 0))
+                tr_target:KnockedBack(self:GetForward())
+                tr_target:SetVelocity(-tr_target:GetVelocity())
+            end
         end)
     end
 end

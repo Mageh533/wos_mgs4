@@ -25,24 +25,7 @@ function KnockoutLoop(entity)
     if entity:GetNW2Float("psyche", 100) >= 100 then
         entity:SetNW2Bool("is_knocked_out", false)
         entity:SetNW2Float("psyche", 100)
-
-        if entity:GetNW2Int("last_nonlethal_damage_type", 0) == 0 then
-            entity:SVAnimationPrep("mgs4_stun_recover_faceup")
-            entity:SetSVAnimation("mgs4_stun_recover_faceup", true)
-        elseif entity:GetNW2Int("last_nonlethal_damage_type", 0) == 1 then
-            entity:SVAnimationPrep("mgs4_sleep_recover_facedown")
-            entity:SetSVAnimation("mgs4_sleep_recover_facedown", true)
-        else
-            entity:SVAnimationPrep("mgs4_stun_recover_facedown")
-            entity:SetSVAnimation("mgs4_stun_recover_facedown", true)
-        end
-
-        if entity:IsPlayer() then
-            entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-        else
-            entity:SetCollisionGroup(COLLISION_GROUP_NPC)
-        end
-
+        entity:GetUp()
     else
         entity:SetNW2Bool("animation_playing", true)
 
