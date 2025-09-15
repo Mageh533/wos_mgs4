@@ -194,7 +194,7 @@ hook.Add("Tick", "MGS4Tick", function()
             entity:Cqc_loop()
         end
 
-        if entity:GetNW2Bool("animation_playing", true) then
+        if entity:GetNW2Bool("animation_playing", true) or entity:GetNW2Bool("is_grabbed", false) then
             if entity:IsPlayer() then
                 entity:Freeze(true)
             else

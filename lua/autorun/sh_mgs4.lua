@@ -173,6 +173,16 @@ function ent:GetUp()
     end
 end
 
+function ent:Cqc_reset()
+    if not self then return end
+
+    self:SetNW2Bool("is_in_cqc", false)
+    self:SetNW2Entity("cqc_grabbing", Entity(0))
+    self:SetNW2Int("cqc_type", 0)
+    self:SetNW2Bool("is_grabbed", false)
+    self:SetNW2Bool("is_choking", false)
+end
+
 -- === CQC Actions ===
 function ent:Cqc_fail()
     if not self then return end
@@ -243,36 +253,96 @@ function ent:Cqc_punch()
     end
 end
 
-function ent:Cqc_throw(target)
+function ent:Cqc_throw(target, direction)
     if not self or not IsValid(target) then return end
 
-    self:SetNW2Bool("is_in_cqc", true)
-    self:SetNW2Entity("cqc_grabbing", target)
-    self:SetNW2Int("cqc_type", 1)
+    if direction == 1 then
+        -- Throw forward
+        self:SetNW2Bool("is_in_cqc", true)
+        self:SVAnimationPrep("mgs4_grab_throw_forward", function()
+            self:SetNW2Bool("is_in_cqc", false)
+        end)
+        self:SetSVAnimation("mgs4_grab_throw_forward", true)
 
-    self:SVAnimationPrep("mgs4_cqc_throw", function()
-        self:SetNW2Bool("is_in_cqc", false)
-        self:SetNW2Entity("cqc_grabbing", Entity(0))
-        self:SetNW2Int("cqc_type", 0)
-    end)
+        target:SetNW2Bool("is_in_cqc", true)
+        target:SVAnimationPrep("mgs4_grabbed_throw_forward", function()
+            target:SetNW2Bool("is_in_cqc", false)
 
-    target:SetNW2Int("last_nonlethal_damage_type", 0)
+            -- CQC level stun damage
+            local cqc_level = self:GetNW2Int("cqc_level", 4)
+            local stun_damage = 10 * cqc_level
 
-    target:SVAnimationPrep("mgs4_cqc_throw_victim", function()
-        target:SetNW2Bool("is_in_cqc", false)
+            local target_psyche = target:GetNW2Float("psyche", 100)
 
-        -- CQC level stun damage
-        local cqc_level = self:GetNW2Int("cqc_level", 4)
-        local stun_damage = 25 * cqc_level
+            target:SetNW2Float("psyche", target_psyche - stun_damage)
 
-        local target_psyche = target:GetNW2Float("psyche", 100)
+            if target:GetNW2Float("psyche", 100) > 0 then
+                target:GetUp()
+            end
 
-        target:SetNW2Float("psyche", target_psyche - stun_damage)
+        end)
+        target:SetSVAnimation("mgs4_grabbed_throw_forward", true)
 
-    end)
+    elseif direction == 2 then
+        -- Throw backward
+        self:SetNW2Bool("is_in_cqc", true)
+        self:SVAnimationPrep("mgs4_grab_throw_backward", function()
+            self:SetNW2Bool("is_in_cqc", false)
+        end)
+        self:SetSVAnimation("mgs4_grab_throw_backward", true)
 
-    self:SetSVAnimation("mgs4_cqc_throw", true)
-    target:SetSVAnimation("mgs4_cqc_throw_victim", true)
+        target:SetNW2Bool("is_in_cqc", true)
+        target:SVAnimationPrep("mgs4_grabbed_throw_backward", function()
+            target:SetNW2Bool("is_in_cqc", false)
+
+            -- CQC level stun damage
+            local cqc_level = self:GetNW2Int("cqc_level", 4)
+            local stun_damage = 10 * cqc_level
+
+            local target_psyche = target:GetNW2Float("psyche", 100)
+
+            target:SetNW2Float("psyche", target_psyche - stun_damage)
+        
+            if target:GetNW2Float("psyche", 100) > 0 then
+                target:GetUp()
+            end
+
+        end)
+        target:SetSVAnimation("mgs4_grabbed_throw_backward", true)
+    else
+        -- Normal throw
+        self:SetNW2Bool("is_in_cqc", true)
+        self:SetNW2Entity("cqc_grabbing", target)
+        self:SetNW2Int("cqc_type", 1)
+
+        self:SVAnimationPrep("mgs4_cqc_throw", function()
+            self:SetNW2Bool("is_in_cqc", false)
+            self:SetNW2Entity("cqc_grabbing", Entity(0))
+            self:SetNW2Int("cqc_type", 0)
+        end)
+
+        target:SetNW2Int("last_nonlethal_damage_type", 0)
+
+        target:SVAnimationPrep("mgs4_cqc_throw_victim", function()
+            target:SetNW2Bool("is_in_cqc", false)
+
+            -- CQC level stun damage
+            local cqc_level = self:GetNW2Int("cqc_level", 4)
+            local stun_damage = 25 * cqc_level
+
+            local target_psyche = target:GetNW2Float("psyche", 100)
+
+            target:SetNW2Float("psyche", target_psyche - stun_damage)
+
+            if target:GetNW2Float("psyche", 100) > 0 then
+                target:GetUp()
+            end
+
+        end)
+
+        self:SetSVAnimation("mgs4_cqc_throw", true)
+        target:SetSVAnimation("mgs4_cqc_throw_victim", true)
+    end
 end
 
 function ent:Cqc_grab(target)
@@ -328,6 +398,8 @@ function ent:Cqc_grab(target)
         self:SetSVAnimation("mgs4_grab_front", true)
         target:SetSVAnimation("mgs4_grabbed_front", true)
     end
+
+    
 end
 
 function ent:Cqc_loop()
@@ -340,23 +412,28 @@ function ent:Cqc_loop()
 
     if type == "" then return end
 
-    -- If target or player dies, stop the loop
-    if not target:Alive() or not self:Alive() or target:GetNW2Float("psyche", 100) <= 0 or self:GetNW2Float("psyche", 100) <= 0 then
-        self:SetNW2Bool("is_in_cqc", false)
-        self:SetNW2Entity("cqc_grabbing", Entity(0))
-        self:SetNW2Int("cqc_type", 0)
+    -- If target or player dies, gets knocked out or player lets go. Stop the loop
+    if not target:Alive() or not self:Alive() or target:GetNW2Float("psyche", 100) <= 0 or self:GetNW2Float("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) then
+        self:Cqc_reset()
+        target:Cqc_reset()
 
-        self:SVAnimationPrep("mgs4_grab_letgo")
-        self:SetSVAnimation("mgs4_grab_letgo", true)
+        -- Letgo animation on the player
+        if self:Alive() and self:GetNW2Float("psyche", 100) > 0 then
+            self:SVAnimationPrep("mgs4_grab_letgo")
+            self:SetSVAnimation("mgs4_grab_letgo", true)
+        end
 
-        target:SetNW2Bool("is_in_cqc", false)
-        target:SetNW2Bool("is_grabbed", false)
-        target:SetNW2Bool("is_choking", false)
+        -- Letgo animation on the target
+        if target:Alive() and target:GetNW2Float("psyche", 100) > 0 then
+            target:SVAnimationPrep("mgs4_grabbed_letgo")
+            target:SetSVAnimation("mgs4_grabbed_letgo", true)
+        end
 
         return
     end
 
     if type == 1 then
+        -- === THROW ===
         -- Ensure target is facing the player
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
@@ -368,17 +445,28 @@ function ent:Cqc_loop()
             target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
         end
     elseif type == 2 then
+        -- === GRAB LOOP ===
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
 
         target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
         target:SetAngles(player_angle)
 
-        -- Holding the CQC button starts chocking
-        if self:GetNW2Bool("cqc_button_held", false) then
+        if self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+            -- Holding the CQC button starts choking
             target:SetNW2Float("psyche", math.max(target:GetNW2Float("psyche", 100) - 0.5, 0))
             target:SetNW2Int("last_nonlethal_damage_type", 2)
             target:SetNW2Bool("is_choking", true)
+        elseif self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+            -- Holding and moving forward throws the target in front
+            self:Cqc_reset()
+            target:Cqc_reset()
+            self:Cqc_throw(target, 1)
+        elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) then
+            -- Holding and moving backward throws the target behind
+            self:Cqc_reset()
+            target:Cqc_reset()
+            self:Cqc_throw(target, 2)
         else
             target:SetNW2Bool("is_choking", false)
         end
@@ -387,6 +475,7 @@ function ent:Cqc_loop()
             target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
         end
     elseif type == 4 then
+        -- === GRAB BEHIND ===
         -- Ensure target is facing the player
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
@@ -398,6 +487,7 @@ function ent:Cqc_loop()
             target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
         end
     elseif type == 3 then
+        -- === GRAB FRONT ===
         -- Ensure target is facing the player
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
