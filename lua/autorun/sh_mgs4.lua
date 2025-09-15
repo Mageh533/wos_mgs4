@@ -66,7 +66,7 @@ function ent:SVAnimationPrep(anim, callback)
 end
 
 -- === Helper to trace a box in front of an entity ===
-function ent:TraceBoxForward()
+function ent:TraceForTarget()
     if not self then return end
 
     local start_pos = self:GetPos() + Vector(0, 0, 40) -- Start slightly above ground
@@ -83,7 +83,11 @@ function ent:TraceBoxForward()
         filter = self
     })
 
-    return tr
+    if IsValid(tr.Entity) and tr.Entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then
+        return nil
+    end
+
+    return tr.Entity
 end
 
 -- === Knockout ===
@@ -203,8 +207,8 @@ function ent:Cqc_punch()
         self:SVAnimationPrep("mgs4_punch", function()
             self:SetNW2Int("cqc_punch_combo", 1)
             self:SetNW2Bool("is_in_cqc", false)
-            local tr_target = self:TraceBoxForward().Entity
-            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+            local tr_target = self:TraceForTarget()
+            if tr_target and IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
                 tr_target:SetNW2Int("last_nonlethal_damage_type", 2)
                 tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 10, 0))
                 tr_target:SetVelocity(-tr_target:GetVelocity())
@@ -215,8 +219,8 @@ function ent:Cqc_punch()
         self:SVAnimationPrep("mgs4_punch_punch", function()
             self:SetNW2Int("cqc_punch_combo", 2)
             self:SetNW2Bool("is_in_cqc", false)
-            local tr_target = self:TraceBoxForward().Entity
-            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+            local tr_target = self:TraceForTarget()
+            if  tr_target and IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
                 tr_target:SetNW2Int("last_nonlethal_damage_type", 2)
                 tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 10, 0))
                 tr_target:SetVelocity(-tr_target:GetVelocity())
@@ -229,8 +233,8 @@ function ent:Cqc_punch()
             self:SetNW2Bool("is_in_cqc", false)
         end)
         timer.Simple(0.35, function()
-            local tr_target = self:TraceBoxForward().Entity
-            if IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
+            local tr_target = self:TraceForTarget()
+            if  tr_target and IsValid(tr_target) and !tr_target:GetNW2Bool("is_knocked_out", false) then
                 tr_target:SetNW2Int("last_nonlethal_damage_type", 0)
                 tr_target:SetNW2Float("psyche", math.max(tr_target:GetNW2Float("psyche", 100) - 50, 0))
                 tr_target:KnockedBack(self:GetForward())
@@ -411,12 +415,11 @@ function ent:Cqc_check()
     if not self then return end
 
     local is_in_cqc = self:GetNW2Bool("is_in_cqc", false)
-    local cqc_target = self:GetNW2Entity("cqc_target", Entity(0))
+    local cqc_target = self:TraceForTarget()
     local cqc_level = self:GetNW2Int("cqc_level", 1)
+    local will_grab = self:GetNW2Bool("will_grab", false)
 
-    local will_grab = self:GetGroundSpeedVelocity():LengthSqr() < 100 -- Less than ~100 units per second
-
-    if is_in_cqc or cqc_level < 0 then return end
+    if is_in_cqc or cqc_level < 0 or not cqc_target then return end
 
     if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
         self:Cqc_fail()
@@ -479,7 +482,7 @@ end)
 
 -- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or ply:GetNW2Int("cqc_type", 0) == 2
+    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or ply:GetNW2Int("cqc_type", 0) == 2 or ply:GetNW2Float("cqc_punch_time_left", 0) > 0
 
     if is_in_anim == false then return end
 

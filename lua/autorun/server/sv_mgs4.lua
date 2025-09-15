@@ -1,6 +1,6 @@
 include("autorun/sh_mgs4.lua")
 
--- === Handling the CQC button ===
+-- === Handling the CQC buttons ===
 -- Not gonna lie, I have no idea if this is even a good way to do this. It seems to convoluted, but it works so screw it.
 
 hook.Add("PlayerButtonDown", "MGS4PlayerButtonDown", function(ply, button)
@@ -17,6 +17,18 @@ hook.Add("PlayerButtonUp", "MGS4PlayerButtonUp", function(ply, button)
 
     if button == cqc_button then
         ply:SetNW2Bool("cqc_button_held", false)
+    end
+end)
+
+hook.Add("KeyPress", "MGS4PlayerKeyPress", function(ply, key)
+    if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT then
+        ply:SetNW2Bool("will_grab", false)
+    end
+end)
+
+hook.Add("KeyRelease", "MGS4PlayerKeyRelease", function(ply, key)
+    if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT then
+        ply:SetNW2Bool("will_grab", true)
     end
 end)
 
@@ -49,9 +61,7 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     --- Only affects players
     ent:SetNW2Bool("animation_playing", false)
 
-    --- CQC Related Variables
-    ent:SetNW2Entity("cqc_target", Entity(0))
-
+    ent:SetNW2Bool("will_grab", false)
     ent:SetNW2Entity("cqc_grabbing", Entity(0))
 
     ent:SetNW2Bool("is_in_cqc", false)
@@ -105,7 +115,7 @@ end)
 -- Cleanup on player death
 hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Bool("animation_playing", false)
-    ply:SetNW2Entity("cqc_target", Entity(0))
+    ply:SetNW2Bool("will_grab", false)
     ply:SetNW2Entity("cqc_grabbing", Entity(0))
     ply:SetNW2Bool("is_in_cqc", false)
     ply:SetNW2Bool("is_grabbed", false)
@@ -140,27 +150,6 @@ hook.Add("EntityTakeDamage", "MGS4EntityTakeDamage", function(ent, dmginfo)
     end
 end)
 
--- === Targets for players ===
-hook.Add("PlayerPostThink", "MGS4CQCCheck", function(ply)
-    -- Check if entity in front is a valid target
-    local trace = ply:GetEyeTrace()
-    if trace.Entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then
-        ply:SetNW2Entity("cqc_target", Entity(0))
-        return
-    end
-
-    local cqc_target = trace.Entity
-
-    -- Ensure its relatively close
-
-    if trace.HitPos:DistToSqr(ply:GetPos()) > 5000 then
-        ply:SetNW2Entity("cqc_target", Entity(0))
-        return
-    end
-
-    ply:SetNW2Entity("cqc_target", cqc_target)
-end)
-
 -- === Handles systems every tick like grabbing and psyche ===
 hook.Add("Tick", "MGS4Tick", function()
     local npc_and_players = ents.FindByClass("player") -- Find all players
@@ -188,7 +177,7 @@ hook.Add("Tick", "MGS4Tick", function()
         end
 
         -- Hold the button for CQC Throw and Grab
-        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.5 and entity:GetNW2Int("cqc_type", 0) ~= 2 then
+        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.2 and entity:GetNW2Int("cqc_type", 0) ~= 2 then
             entity:SetNW2Bool("cqc_button_held", false)
             entity:SetNW2Float("cqc_button_hold_time", 0)
             entity:Cqc_check()
