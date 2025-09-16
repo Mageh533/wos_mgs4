@@ -24,6 +24,10 @@ hook.Add("KeyPress", "MGS4PlayerKeyPress", function(ply, key)
     if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT then
         ply:SetNW2Bool("will_grab", false)
     end
+
+    if key == IN_ATTACK2 and ply:GetNW2Int("cqc_type", 0) == 2 then
+        ply:SetNW2Bool("is_aiming", not ply:GetNW2Bool("is_aiming", false))
+    end
 end)
 
 hook.Add("KeyRelease", "MGS4PlayerKeyRelease", function(ply, key)
@@ -67,6 +71,7 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Bool("is_in_cqc", false)
     ent:SetNW2Bool("is_grabbed", false)
     ent:SetNW2Bool("is_choking", false)
+    ent:SetNW2Bool("is_aiming", false)
 
     --- Type of CQC action currently performing
     --- 0 = Nothing
@@ -123,6 +128,7 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Bool("is_in_cqc", false)
     ply:SetNW2Bool("is_grabbed", false)
     ply:SetNW2Bool("is_choking", false)
+    ply:SetNW2Bool("is_aiming", false)
     ply:SetNW2Int("cqc_type", 0)
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
     ply:SetNW2Bool("cqc_button_held", false)
@@ -162,6 +168,7 @@ hook.Add("Tick", "MGS4Tick", function()
         if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
         if entity:GetNW2Float("psyche", 100) <= 0 and not entity:GetNW2Bool("is_knocked_out", false) and not entity:GetNW2Bool("animation_playing", false) then
+            entity:SetNW2Float("psyche", 0)
             entity:Knockout() -- Knock out the player silently
         end
 

@@ -181,6 +181,7 @@ function ent:Cqc_reset()
     self:SetNW2Int("cqc_type", 0)
     self:SetNW2Bool("is_grabbed", false)
     self:SetNW2Bool("is_choking", false)
+    self:SetNW2Bool("is_aiming", false)
 end
 
 -- === CQC Actions ===
@@ -251,6 +252,30 @@ function ent:Cqc_punch()
             end
         end)
     end
+end
+
+function ent:Cqc_throat_cut(target)
+    if not self or not IsValid(target) then return end
+
+    self:SetNW2Bool("is_in_cqc", true)
+    self:SetNW2Entity("cqc_grabbing", target)
+    self:SVAnimationPrep("mgs4_grab_knife", function()
+        self:SetNW2Bool("is_in_cqc", false)
+        self:SetNW2Entity("cqc_grabbing", Entity(0))
+        self:SetNW2Int("cqc_type", 0)
+    end)
+    self:SetSVAnimation("mgs4_grab_knife", true)
+
+    target:SetNW2Int("last_nonlethal_damage_type", 1)
+    target:SetNW2Bool("is_in_cqc", true)
+    target:SVAnimationPrep("mgs4_grabbed_knife", function()
+        target:SetNW2Bool("is_in_cqc", false)
+
+        -- Just kill them lmao
+        target:TakeDamage(1000, self, self)
+
+    end)
+    target:SetSVAnimation("mgs4_grabbed_knife", true)
 end
 
 function ent:Cqc_throw(target, direction)
@@ -462,23 +487,33 @@ function ent:Cqc_loop()
         target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
         target:SetAngles(player_angle)
 
-        if self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
-            -- Holding the CQC button starts choking
-            target:SetNW2Float("psyche", math.max(target:GetNW2Float("psyche", 100) - 0.5, 0))
-            target:SetNW2Int("last_nonlethal_damage_type", 2)
-            target:SetNW2Bool("is_choking", true)
-        elseif self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
-            -- Holding and moving forward throws the target in front
-            self:Cqc_reset()
-            target:Cqc_reset()
-            self:Cqc_throw(target, 1)
-        elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) then
-            -- Holding and moving backward throws the target behind
-            self:Cqc_reset()
-            target:Cqc_reset()
-            self:Cqc_throw(target, 2)
+        if self:GetNW2Bool("is_aiming", false) then
+            -- Aiming mode, shoot.
         else
-            target:SetNW2Bool("is_choking", false)
+            -- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
+            if self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+                -- Holding the CQC button starts choking
+                target:SetNW2Float("psyche", math.max(target:GetNW2Float("psyche", 100) - 0.5, 0))
+                target:SetNW2Int("last_nonlethal_damage_type", 2)
+                target:SetNW2Bool("is_choking", true)
+            elseif self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+                -- Holding and moving forward throws the target in front
+                self:Cqc_reset()
+                target:Cqc_reset()
+                self:Cqc_throw(target, 1)
+            elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) then
+                -- Holding and moving backward throws the target behind
+                self:Cqc_reset()
+                target:Cqc_reset()
+                self:Cqc_throw(target, 2)
+            elseif self:KeyPressed(IN_ATTACK) and self:GetNW2Bool("blades3", false) then
+                -- Clicking does the throat cut
+                self:Cqc_reset()
+                target:Cqc_reset()
+                self:Cqc_throat_cut(target)
+            else
+                target:SetNW2Bool("is_choking", false)
+            end
         end
 
         if target:IsPlayer() then
@@ -529,6 +564,18 @@ function ent:Cqc_check()
     end
 end
 
+-- === Handling buttons while grabbing ===
+hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
+    if ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false) then
+        cmd:RemoveKey(IN_ATTACK)
+        cmd:RemoveKey(IN_RELOAD)
+    elseif ply:GetNW2Int("cqc_type", 0) == 2 and ply:GetNW2Bool("is_aiming", false) then
+        cmd:RemoveKey(IN_JUMP)
+        cmd:RemoveKey(IN_FORWARD)
+        cmd:RemoveKey(IN_BACK)
+    end
+end)
+
 -- === Animation Handling for players ===
 hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
     if ply:GetNW2Bool("is_knocked_out", false) then
@@ -548,10 +595,14 @@ hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
         -- == CQC grab loop ==
         local grabbing_anim
         local grabbing_loop = ply:LookupSequence("mgs4_grab_loop")
+        local grabbing_aim = ply:LookupSequence("mgs4_grab_aim")
+        local grabbing_chocking = ply:LookupSequence("mgs4_grab_chocking")
         local target = ply:GetNW2Entity("cqc_grabbing", Entity(0))
 
         if target:GetNW2Bool("is_choking", false) then
-            grabbing_anim = ply:LookupSequence("mgs4_grab_chocking")
+            grabbing_anim = grabbing_chocking
+        elseif ply:GetNW2Bool("is_aiming", false) then
+            grabbing_anim = grabbing_aim
         else
             grabbing_anim = grabbing_loop
         end
@@ -584,7 +635,7 @@ end)
 
 -- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or ply:GetNW2Int("cqc_type", 0) == 2 or ply:GetNW2Float("cqc_punch_time_left", 0) > 0
+    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or (ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false)) or ply:GetNW2Float("cqc_punch_time_left", 0) > 0
 
     if is_in_anim == false then return end
 
