@@ -74,6 +74,8 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     --- 2 = Grab loop
     --- 3 = Grab front
     --- 4 = Grab behind
+    --- 5 = Grab front throw
+    --- 6 = Grab behind throw
     ent:SetNW2Int("cqc_type", 0)
 
     --- Each CQC Level grants you:
@@ -106,9 +108,10 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Bool("is_knocked_out", false)
 
     ---- Last Non-Lethal Damage Type
-    --- 0 = CQC Stun
+    --- 0 = CQC Stun (Face up)
     --- 1 = Tranquilizers
     --- 2 = Generic Stun
+    --- 3 = CQC Stun (Face down)
     ent:SetNW2Int("last_nonlethal_damage_type", 0)
 end)
 
