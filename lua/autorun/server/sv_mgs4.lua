@@ -28,6 +28,10 @@ hook.Add("KeyPress", "MGS4PlayerKeyPress", function(ply, key)
     if key == IN_ATTACK2 and ply:GetNW2Int("cqc_type", 0) == 2 then
         ply:SetNW2Bool("is_aiming", not ply:GetNW2Bool("is_aiming", false))
     end
+
+    if key == IN_ATTACK and ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false) then
+        ply:SetNW2Bool("is_knife", true)
+    end
 end)
 
 hook.Add("KeyRelease", "MGS4PlayerKeyRelease", function(ply, key)
@@ -72,6 +76,7 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Bool("is_grabbed", false)
     ent:SetNW2Bool("is_choking", false)
     ent:SetNW2Bool("is_aiming", false)
+    ent:SetNW2Bool("is_knife", false)
 
     --- Type of CQC action currently performing
     --- 0 = Nothing
@@ -129,6 +134,7 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Bool("is_grabbed", false)
     ply:SetNW2Bool("is_choking", false)
     ply:SetNW2Bool("is_aiming", false)
+    ply:SetNW2Bool("is_knife", false)
     ply:SetNW2Int("cqc_type", 0)
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
     ply:SetNW2Bool("cqc_button_held", false)
