@@ -33,7 +33,7 @@ function ent:SVAnimationPrep(anim, callback)
 
     local current_pos = self:GetPos()
     
-    local pelvis_pos
+    local pos_to_set
     local head_angle
 
     self:SetVelocity(-self:GetVelocity())
@@ -41,14 +41,15 @@ function ent:SVAnimationPrep(anim, callback)
     -- Get the bone positions from before the animation ends
     timer.Simple(duration - 0.01, function()
         local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
-        pelvis_pos = pelvis_matrix:GetTranslation()
+        pos_to_set = pelvis_matrix:GetTranslation()
+
         head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
     end)
 
     timer.Simple(duration, function()
         if self:Alive() == false then return end
 
-        self:SetPos(Vector(pelvis_pos.x, pelvis_pos.y, current_pos.z))
+        self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
         
         if self:IsPlayer() then
             self:SetEyeAngles(Angle(0, head_angle.y, 0))
@@ -257,29 +258,45 @@ end
 function ent:Cqc_throat_cut(target)
     if not self or not IsValid(target) then return end
 
+    local knife_anim = "mgs4_grab_knife"
+    local knifed_anim = "mgs4_grabbed_knife"
+
+    if target:GetNW2Bool("is_grabbed_crouched", false) then
+        knife_anim = "mgs4_grab_crouched_knife"
+        knifed_anim = "mgs4_grabbed_crouched_knife"
+    end
+
     self:SetNW2Bool("is_in_cqc", true)
     self:SetNW2Entity("cqc_grabbing", target)
-    self:SVAnimationPrep("mgs4_grab_knife", function()
+    self:SVAnimationPrep(knife_anim, function()
         self:SetNW2Bool("is_in_cqc", false)
         self:SetNW2Entity("cqc_grabbing", Entity(0))
         self:SetNW2Int("cqc_type", 0)
     end)
-    self:SetSVAnimation("mgs4_grab_knife", true)
+    self:SetSVAnimation(knife_anim, true)
 
     target:SetNW2Int("last_nonlethal_damage_type", 1)
     target:SetNW2Bool("is_in_cqc", true)
-    target:SVAnimationPrep("mgs4_grabbed_knife", function()
+    target:SVAnimationPrep(knifed_anim, function()
         target:SetNW2Bool("is_in_cqc", false)
 
         -- Just kill them lmao
         target:TakeDamage(1000, self, self)
 
     end)
-    target:SetSVAnimation("mgs4_grabbed_knife", true)
+    target:SetSVAnimation(knifed_anim, true)
 end
 
 function ent:Cqc_sop_scan(target)
     if not self or not IsValid(target) then return end
+
+    local scan_anim = "mgs4_grab_scan"
+    local scanned_anim = "mgs4_grabbed_scan"
+
+    if target:GetNW2Bool("is_grabbed_crouched", false) then
+        scan_anim = "mgs4_grab_crouched_scan"
+        scanned_anim = "mgs4_grabbed_crouched_scan"
+    end
 
     -- Temporarily remove weapon from player until scan is complete
     local current_weapon = self:GetActiveWeapon()
@@ -287,16 +304,38 @@ function ent:Cqc_sop_scan(target)
         self:SetActiveWeapon(NULL)
     end
 
-    self:SVAnimationPrep("mgs4_grab_scan", function()
+    self:SVAnimationPrep(scan_anim, function()
         -- Give back the weapon
         if IsValid(current_weapon) then
             self:SetActiveWeapon(current_weapon)
         end
     end)
-    self:SetSVAnimation("mgs4_grab_scan", true)
+    self:SetSVAnimation(scan_anim, true)
 
-    target:SVAnimationPrep("mgs4_grabbed_scan")
-    target:SetSVAnimation("mgs4_grabbed_scan", true)
+    target:SVAnimationPrep(scanned_anim)
+    target:SetSVAnimation(scanned_anim, true)
+end
+
+function ent:Cqc_grab_crouch(target)
+    if not self or not IsValid(target) then return end
+
+    if not target:GetNW2Bool("is_grabbed_crouched", false) then
+        self:SVAnimationPrep("mgs4_grab_crouch")
+        self:SetSVAnimation("mgs4_grab_crouch", true)
+
+        target:SVAnimationPrep("mgs4_grabbed_crouch", function ()
+            target:SetNW2Bool("is_grabbed_crouched", true)
+        end)
+        target:SetSVAnimation("mgs4_grabbed_crouch", true)
+    else
+        self:SVAnimationPrep("mgs4_grab_crouched_stand")
+        self:SetSVAnimation("mgs4_grab_crouched_stand", true)
+
+        target:SVAnimationPrep("mgs4_grabbed_crouched_stand", function ()
+            target:SetNW2Bool("is_grabbed_crouched", false)
+        end)
+        target:SetSVAnimation("mgs4_grabbed_crouched_stand", true)
+    end
 end
 
 function ent:Cqc_throw(target, direction)
@@ -431,28 +470,76 @@ function ent:Cqc_grab(target)
 
     if angleAround > 135 and angleAround <= 225 then
         -- Grabbing from back
+        local grab_anim
+        local grabbed_anim
+
+        local grab_standing_anim = "mgs4_grab_behind"
+        local grabbed_standing_anim = "mgs4_grabbed_behind"
+        local grab_crouched_anim = "mgs4_grab_crouched_behind"
+        local grabbed_crouched_anim = "mgs4_grabbed_crouched_behind"
+
+        if self:Crouching() then
+            grab_anim = grab_crouched_anim
+            grabbed_anim = grabbed_crouched_anim
+        else
+            grab_anim = grab_standing_anim
+            grabbed_anim = grabbed_standing_anim
+        end
+
         self:SetNW2Int("cqc_type", 4)
-        self:SVAnimationPrep("mgs4_grab_behind", function ()
+        self:SVAnimationPrep(grab_anim, function ()
             self:SetNW2Int("cqc_type", 2)
         end)
-        target:SVAnimationPrep("mgs4_grabbed_behind", function (ent)
-            ent:SetNW2Bool("is_grabbed", true)
+        target:SVAnimationPrep(grabbed_anim, function ()
+            target:SetNW2Bool("is_grabbed", true)
+
+            if self:Crouching() then
+                target:SetNW2Bool("is_grabbed_crouched", true)
+            else
+                target:SetNW2Bool("is_grabbed_crouched", false)
+            end
+
         end)
 
-        self:SetSVAnimation("mgs4_grab_behind", true)
-        target:SetSVAnimation("mgs4_grabbed_behind", true)
+        self:SetSVAnimation(grab_anim, true)
+        target:SetSVAnimation(grabbed_anim, true)
     else
         -- Grabbing from front
+        local grab_anim
+        local grabbed_anim
+
+        local grab_standing_anim = "mgs4_grab_front"
+        local grabbed_standing_anim = "mgs4_grabbed_front"
+
+        local grab_crouched_anim = "mgs4_grab_crouched_front"
+        local grabbed_crouched_anim = "mgs4_grabbed_crouched_front"
+
+        if self:Crouching() then
+            grab_anim = grab_crouched_anim
+            grabbed_anim = grabbed_crouched_anim
+        else
+            grab_anim = grab_standing_anim
+            grabbed_anim = grabbed_standing_anim
+        end
+
+
         self:SetNW2Int("cqc_type", 3)
-        self:SVAnimationPrep("mgs4_grab_front", function ()
+        self:SVAnimationPrep(grab_anim, function ()
             self:SetNW2Int("cqc_type", 2)
         end)
-        target:SVAnimationPrep("mgs4_grabbed_front", function (ent)
-            ent:SetNW2Bool("is_grabbed", true)
+        target:SVAnimationPrep(grabbed_anim, function()
+            target:SetNW2Bool("is_grabbed", true)
+
+            if self:Crouching() then
+                target:SetNW2Bool("is_grabbed_crouched", true)
+            else
+                target:SetNW2Bool("is_grabbed_crouched", false)
+            end
+
         end)
 
-        self:SetSVAnimation("mgs4_grab_front", true)
-        target:SetSVAnimation("mgs4_grabbed_front", true)
+        self:SetSVAnimation(grab_anim, true)
+        target:SetSVAnimation(grabbed_anim, true)
     end
 
     
@@ -475,14 +562,36 @@ function ent:Cqc_loop()
 
         -- Letgo animation on the player
         if self:Alive() and self:GetNW2Float("psyche", 100) > 0 then
-            self:SVAnimationPrep("mgs4_grab_letgo")
-            self:SetSVAnimation("mgs4_grab_letgo", true)
+            local letgo_anim
+
+            local standed_letgo_anim = "mgs4_grab_letgo"
+            local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
+
+            if target:GetNW2Bool("is_grabbed_crouched", false) then
+                letgo_anim = crouched_letgo_anim
+            else
+                letgo_anim = standed_letgo_anim
+            end
+
+            self:SVAnimationPrep(letgo_anim)
+            self:SetSVAnimation(letgo_anim, true)
         end
 
         -- Letgo animation on the target
         if target:Alive() and target:GetNW2Float("psyche", 100) > 0 then
-            target:SVAnimationPrep("mgs4_grabbed_letgo")
-            target:SetSVAnimation("mgs4_grabbed_letgo", true)
+            local letgo_anim
+
+            local standed_letgo_anim = "mgs4_grabbed_letgo"
+            local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
+
+            if target:GetNW2Bool("is_grabbed_crouched", false) then
+                letgo_anim = crouched_letgo_anim
+            else
+                letgo_anim = standed_letgo_anim
+            end
+
+            target:SVAnimationPrep(letgo_anim)
+            target:SetSVAnimation(letgo_anim, true)
         end
 
         return
@@ -515,12 +624,12 @@ function ent:Cqc_loop()
                 target:SetNW2Float("psyche", math.max(target:GetNW2Float("psyche", 100) - 0.5, 0))
                 target:SetNW2Int("last_nonlethal_damage_type", 2)
                 target:SetNW2Bool("is_choking", true)
-            elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+            elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNW2Bool("is_grabbed_crouched", false) then
                 -- Holding and moving forward throws the target in front
                 self:Cqc_reset()
                 target:Cqc_reset()
                 self:Cqc_throw(target, 1)
-            elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) then
+            elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNW2Bool("is_grabbed_crouched", false) then
                 -- Holding and moving backward throws the target behind
                 self:Cqc_reset()
                 target:Cqc_reset()
@@ -533,6 +642,9 @@ function ent:Cqc_loop()
             elseif not self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNW2Bool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
                 -- press e while not holding does the scan
                 self:Cqc_sop_scan(target)
+            elseif self:KeyPressed(IN_DUCK) then
+                -- Pressing crouch makes both the player and target crouch while grabbing
+                self:Cqc_grab_crouch(target)
             else
                 target:SetNW2Bool("is_choking", false)
             end
@@ -586,6 +698,31 @@ function ent:Cqc_check()
     end
 end
 
+-- Not literally helping yourself (you are helping another get up, its an mgo2 reference)
+function ent:GetYourselfUp()
+    if not self then return end
+
+    local target = self:TraceForTarget()
+
+    if not target or not IsValid(target) then
+        self:SetNW2Bool("helping_up", false)
+        return
+    end
+
+    if self:GetNW2Bool("helping_up", false) and target:GetNW2Bool("is_knocked_out", false) then
+        target:SetNW2Float("psyche", target:GetNW2Float("psyche", 100) + (GetConVar("mgs4_psyche_recovery_action"):GetFloat() * FrameTime() * 10))
+    elseif not self:GetNW2Bool("helping_up", false) and target:GetNW2Bool("is_knocked_out", false) and self:Crouching() then
+        self:SVAnimationPrep("mgs4_wakeup_start", function()
+            self:SetNW2Bool("helping_up", true)
+            self:SetCycle(0)
+        end)
+        self:SetSVAnimation("mgs4_wakeup_start", true)
+    elseif self:GetNW2Bool("helping_up", false) and not target:GetNW2Bool("is_knocked_out", false) then
+        self:SetNW2Bool("is_using", false)
+    end
+
+end
+
 -- === Handling buttons while grabbing ===
 hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
     if ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false) and not ply:GetNW2Bool("is_knife", false) then
@@ -595,6 +732,10 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
         cmd:RemoveKey(IN_JUMP)
         cmd:RemoveKey(IN_FORWARD)
         cmd:RemoveKey(IN_BACK)
+    elseif ply:GetNW2Bool("helping_up", false) then
+        cmd:ClearMovement()
+        cmd:RemoveKey(IN_JUMP)
+        cmd:RemoveKey(IN_DUCK)
     end
 end)
 
@@ -612,36 +753,80 @@ hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
             knockout_anim = ply:LookupSequence("mgs4_knocked_out_loop_facedown")
         end
 
+        ply:SetCycle(CurTime() % 1)
+
         return -1, knockout_anim
     elseif ply:GetNW2Entity("cqc_grabbing", Entity(0)) ~= Entity(0) and ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("animation_playing", false) then
         -- == CQC grab loop ==
         local grabbing_anim
+
         local grabbing_loop = ply:LookupSequence("mgs4_grab_loop")
         local grabbing_aim = ply:LookupSequence("mgs4_grab_aim")
         local grabbing_chocking = ply:LookupSequence("mgs4_grab_chocking")
+
+        local grabbing_crouched_loop = ply:LookupSequence("mgs4_grab_crouched_loop")
+        local grabbing_crouched_aim = ply:LookupSequence("mgs4_grab_crouched_aim")
+        local grabbing_crouched_chocking = ply:LookupSequence("mgs4_grab_crouched_chocking")
+
         local target = ply:GetNW2Entity("cqc_grabbing", Entity(0))
 
         if target:GetNW2Bool("is_choking", false) then
-            grabbing_anim = grabbing_chocking
+            if target:GetNW2Bool("is_grabbed_crouched", false) then
+                grabbing_anim = grabbing_crouched_chocking
+            else
+                grabbing_anim = grabbing_chocking
+            end
         elseif ply:GetNW2Bool("is_aiming", false) then
-            grabbing_anim = grabbing_aim
+            if target:GetNW2Bool("is_grabbed_crouched", false) then
+                grabbing_anim = grabbing_crouched_aim
+            else
+                grabbing_anim = grabbing_aim
+            end
         else
-            grabbing_anim = grabbing_loop
+            if target:GetNW2Bool("is_grabbed_crouched", false) then
+                grabbing_anim = grabbing_crouched_loop
+            else
+                grabbing_anim = grabbing_loop
+            end
         end
+
+        ply:SetCycle(CurTime() % 1)
 
         return -1, grabbing_anim
     elseif ply:GetNW2Bool("is_grabbed", false) and not ply:GetNW2Bool("animation_playing", false) then
         -- == CQC grabbed loop ==
         local grabbed_anim
+
         local grabbed_loop = ply:LookupSequence("mgs4_grabbed_loop")
+        local grabbed_chocking = ply:LookupSequence("mgs4_grabbed_chocking")
+
+        local grabbed_crouched_loop = ply:LookupSequence("mgs4_grabbed_crouched_loop")
+        local grabbed_crouched_chocking = ply:LookupSequence("mgs4_grabbed_crouched_chocking")
 
         if ply:GetNW2Bool("is_choking", false) then
-            grabbed_anim = ply:LookupSequence("mgs4_grabbed_chocking")
+            if ply:GetNW2Bool("is_grabbed_crouched", false) then
+                grabbed_anim = grabbed_crouched_chocking
+            else
+                grabbed_anim = grabbed_chocking
+            end
         else
-            grabbed_anim = grabbed_loop
+            if ply:GetNW2Bool("is_grabbed_crouched", false) then
+                grabbed_anim = grabbed_crouched_loop
+            else
+                grabbed_anim = grabbed_loop
+            end
         end
 
+        ply:SetCycle(CurTime() % 1)
+
         return -1, grabbed_anim
+    elseif ply:GetNW2Bool("helping_up", false) and not ply:GetNW2Bool("animation_playing", false) then
+        -- == Playing an animation ==
+        local helping_loop = ply:LookupSequence("mgs4_wakeup_loop")
+
+        ply:SetCycle(CurTime() % 1)
+
+        return -1, helping_loop
     else
         -- == All other animations ==
         local str = ply:GetNWString('SVAnim')
@@ -657,7 +842,7 @@ end)
 
 -- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or (ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false)) or ply:GetNW2Float("cqc_punch_time_left", 0) > 0
+    local is_in_anim = ply:GetNW2Bool("animation_playing", false) or (ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false)) or ply:GetNW2Float("cqc_punch_time_left", 0) > 0 or ply:GetNW2Bool("helping_up", false)
 
     if is_in_anim == false then return end
 

@@ -32,11 +32,19 @@ hook.Add("KeyPress", "MGS4PlayerKeyPress", function(ply, key)
     if key == IN_ATTACK and ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false) then
         ply:SetNW2Bool("is_knife", true)
     end
+
+    if key == IN_USE then
+        ply:SetNW2Bool("is_using", true)
+    end
 end)
 
 hook.Add("KeyRelease", "MGS4PlayerKeyRelease", function(ply, key)
     if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT then
         ply:SetNW2Bool("will_grab", true)
+    end
+
+    if key == IN_USE and not ply:GetNW2Bool("animation_playing", false) then
+        ply:SetNW2Bool("is_using", false)
     end
 end)
 
@@ -74,9 +82,11 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
 
     ent:SetNW2Bool("is_in_cqc", false)
     ent:SetNW2Bool("is_grabbed", false)
+    ent:SetNW2Bool("is_grabbed_crouched", false)
     ent:SetNW2Bool("is_choking", false)
     ent:SetNW2Bool("is_aiming", false)
     ent:SetNW2Bool("is_knife", false)
+    ent:SetNW2Bool("is_using", false)
 
     --- Type of CQC action currently performing
     --- 0 = Nothing
@@ -104,7 +114,9 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
 
     -- Time of the punch punch kick combo. Keep pressing to complete the combo, press it once to just punch once.
     ent:SetNW2Float("cqc_punch_time_left", 0)
+
     ent:SetNW2Int("cqc_punch_combo", 0) -- 1 = First punch, 2 = Second punch, 3 = Kick
+    ent:SetNW2Bool("helping_up", false)
 
     --- Grab abilities, requires at least CQC level 1
     ent:SetNW2Bool("blades3", true)
@@ -132,15 +144,18 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Entity("cqc_grabbing", Entity(0))
     ply:SetNW2Bool("is_in_cqc", false)
     ply:SetNW2Bool("is_grabbed", false)
+    ply:SetNW2Bool("is_grabbed_crouched", false)
     ply:SetNW2Bool("is_choking", false)
     ply:SetNW2Bool("is_aiming", false)
     ply:SetNW2Bool("is_knife", false)
+    ply:SetNW2Bool("is_using", false)
     ply:SetNW2Int("cqc_type", 0)
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
     ply:SetNW2Bool("cqc_button_held", false)
     ply:SetNW2Float("cqc_button_hold_time", 0)
     ply:SetNW2Float("cqc_punch_time_left", 0)
-    ply:SetNW2Int("cqc_punch_combo", 0) -- 1 = First punch, 2 = Second punch, 3 = Kick
+    ply:SetNW2Int("cqc_punch_combo", 0)
+    ply:SetNW2Bool("helping_up", false)
     ply:SetNW2Bool("blades3", true)
     ply:SetNW2Bool("scanner3", true)
     ply:SetNW2Float("psyche", 100)
@@ -197,6 +212,16 @@ hook.Add("Tick", "MGS4Tick", function()
             entity:SetNW2Bool("cqc_button_held", false)
             entity:SetNW2Float("cqc_button_hold_time", 0)
             entity:Cqc_check()
+        end
+
+        -- Hold the use button while crouched next to a knocked out entity to help them wake up
+        if entity:GetNW2Bool("is_using", false) then
+            entity:GetYourselfUp()
+        elseif not entity:GetNW2Bool("is_using", false) and entity:GetNW2Bool("helping_up", false) and not entity:GetNW2Bool("animation_playing", false) then
+            entity:SVAnimationPrep("mgs4_wakeup_end", function()
+                entity:SetNW2Bool("helping_up", false)
+            end)
+            entity:SetSVAnimation("mgs4_wakeup_end", true)
         end
 
         if entity:GetNW2Float("cqc_punch_time_left", 0) > 0 then

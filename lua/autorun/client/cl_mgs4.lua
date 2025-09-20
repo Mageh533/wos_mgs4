@@ -80,3 +80,17 @@ hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
         draw.SimpleText(tostring(math.Round(psyche, 0)) .. "%", "TargetIDSmall", ScrW() / 2, ScrH() / 2 + 70, Color(255,205,0,255), TEXT_ALIGN_CENTER)
     end
 end)
+
+-- === Freeze mouse when helping up ===
+hook.Add( "InputMouseApply", "FreezeTurning", function( cmd )
+    local ply = LocalPlayer()
+
+    if ply:GetNW2Bool("helping_up", false) then
+        cmd:SetMouseX( 0 )
+        cmd:SetMouseY( 0 )
+
+        return true
+    end
+
+end )
+
