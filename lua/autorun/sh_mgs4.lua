@@ -320,28 +320,6 @@ function ent:Cqc_sop_scan(target)
     target:SetSVAnimation(scanned_anim, true)
 end
 
-function ent:Cqc_grab_crouch(target)
-    if not self or not IsValid(target) then return end
-
-    if not target:GetNW2Bool("is_grabbed_crouched", false) then
-        self:SVAnimationPrep("mgs4_grab_crouch")
-        self:SetSVAnimation("mgs4_grab_crouch", true)
-
-        target:SVAnimationPrep("mgs4_grabbed_crouch", function ()
-            target:SetNW2Bool("is_grabbed_crouched", true)
-        end)
-        target:SetSVAnimation("mgs4_grabbed_crouch", true)
-    else
-        self:SVAnimationPrep("mgs4_grab_crouched_stand")
-        self:SetSVAnimation("mgs4_grab_crouched_stand", true)
-
-        target:SVAnimationPrep("mgs4_grabbed_crouched_stand", function ()
-            target:SetNW2Bool("is_grabbed_crouched", false)
-        end)
-        target:SetSVAnimation("mgs4_grabbed_crouched_stand", true)
-    end
-end
-
 function ent:Cqc_throw(target, direction)
     if not self or not IsValid(target) then return end
 
@@ -444,6 +422,8 @@ function ent:Cqc_throw(target, direction)
     end
 end
 
+
+-- == CQC Grabbing actions ==
 function ent:Cqc_grab(target)
     if not self or not IsValid(target) then return end
 
@@ -537,10 +517,41 @@ function ent:Cqc_grab(target)
     else
         target:SetNW2Bool("is_grabbed_crouched", false)
     end
-
-    
 end
 
+function ent:Cqc_grab_crouch(target)
+    if not self or not IsValid(target) then return end
+
+    if not target:GetNW2Bool("is_grabbed_crouched", false) then
+        self:SVAnimationPrep("mgs4_grab_crouch")
+        self:SetSVAnimation("mgs4_grab_crouch", true)
+
+        target:SVAnimationPrep("mgs4_grabbed_crouch", function ()
+            target:SetNW2Bool("is_grabbed_crouched", true)
+        end)
+        target:SetSVAnimation("mgs4_grabbed_crouch", true)
+    else
+        self:SVAnimationPrep("mgs4_grab_crouched_stand")
+        self:SetSVAnimation("mgs4_grab_crouched_stand", true)
+
+        target:SVAnimationPrep("mgs4_grabbed_crouched_stand", function ()
+            target:SetNW2Bool("is_grabbed_crouched", false)
+        end)
+        target:SetSVAnimation("mgs4_grabbed_crouched_stand", true)
+    end
+end
+
+function ent:Cqc_grab_move(target)
+    if not self or not IsValid(target) then return end
+
+    self:SVAnimationPrep("mgs4_grab_move")
+    self:SetSVAnimation("mgs4_grab_move", true)
+
+    target:SVAnimationPrep("mgs4_grabbed_move")
+    target:SetSVAnimation("mgs4_grabbed_move", true)
+end
+
+-- == Loop sequence to ensure correct positions at all times and handle grabbing actions ==
 function ent:Cqc_loop()
     if not self then return end
 
@@ -640,6 +651,9 @@ function ent:Cqc_loop()
             elseif not self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNW2Bool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
                 -- press e while not holding does the scan
                 self:Cqc_sop_scan(target)
+            elseif self:KeyPressed(IN_BACK) and not target:GetNW2Bool("is_grabbed_crouched", false) then
+                -- Pressing back button moves backwards
+                self:Cqc_grab_move(target)
             elseif self:KeyPressed(IN_DUCK) then
                 -- Pressing crouch makes both the player and target crouch while grabbing
                 self:Cqc_grab_crouch(target)
