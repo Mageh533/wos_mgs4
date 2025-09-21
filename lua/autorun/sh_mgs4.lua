@@ -31,6 +31,8 @@ function ent:SVAnimationPrep(anim, callback)
 
     self:SetNW2Bool("animation_playing", true)
 
+    self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+
     local current_pos = self:GetPos()
     
     local pos_to_set
@@ -39,7 +41,7 @@ function ent:SVAnimationPrep(anim, callback)
     self:SetVelocity(-self:GetVelocity())
 
     -- Get the bone positions from before the animation ends
-    timer.Simple(duration - 0.01, function()
+    timer.Simple(duration - 0.1, function()
         local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
         pos_to_set = pelvis_matrix:GetTranslation()
 
@@ -59,9 +61,17 @@ function ent:SVAnimationPrep(anim, callback)
 
         self:SetNW2Bool("animation_playing", false)
 
+        if self:IsPlayer() then
+            self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+        else
+            self:SetCollisionGroup(COLLISION_GROUP_NPC)
+        end
+
         if callback and type(callback) == "function" then
             callback(self)
         end
+
+        self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
 
     end)
 end
@@ -165,12 +175,6 @@ function ent:GetUp()
     else
         self:SVAnimationPrep("mgs4_stun_recover_facedown")
         self:SetSVAnimation("mgs4_stun_recover_facedown", true)
-    end
-
-    if self:IsPlayer() then
-        self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-    else
-        self:SetCollisionGroup(COLLISION_GROUP_NPC)
     end
 end
 
@@ -492,13 +496,6 @@ function ent:Cqc_grab(target)
         end)
         target:SVAnimationPrep(grabbed_anim, function ()
             target:SetNW2Bool("is_grabbed", true)
-
-            if self:Crouching() then
-                target:SetNW2Bool("is_grabbed_crouched", true)
-            else
-                target:SetNW2Bool("is_grabbed_crouched", false)
-            end
-
         end)
 
         self:SetSVAnimation(grab_anim, true)
@@ -529,17 +526,16 @@ function ent:Cqc_grab(target)
         end)
         target:SVAnimationPrep(grabbed_anim, function()
             target:SetNW2Bool("is_grabbed", true)
-
-            if self:Crouching() then
-                target:SetNW2Bool("is_grabbed_crouched", true)
-            else
-                target:SetNW2Bool("is_grabbed_crouched", false)
-            end
-
         end)
 
         self:SetSVAnimation(grab_anim, true)
         target:SetSVAnimation(grabbed_anim, true)
+    end
+
+    if self:Crouching() then
+        target:SetNW2Bool("is_grabbed_crouched", true)
+    else
+        target:SetNW2Bool("is_grabbed_crouched", false)
     end
 
     
@@ -617,6 +613,8 @@ function ent:Cqc_loop()
         target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
         target:SetAngles(player_angle)
 
+        self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
+
         if not self:GetNW2Bool("is_aiming", false) then
             -- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
             if self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
@@ -659,7 +657,7 @@ function ent:Cqc_loop()
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
 
-        target:SetPos(player_pos) -- Move the target slightly forward
+        target:SetPos(player_pos)
         target:SetAngles(player_angle + Angle(0, 180, 0))
 
         if target:IsPlayer() then
@@ -670,7 +668,7 @@ function ent:Cqc_loop()
         local player_pos = self:GetPos()
         local player_angle = self:GetAngles()
 
-        target:SetPos(player_pos) -- Move the target slightly forward
+        target:SetPos(player_pos)
         target:SetAngles(player_angle)
 
         if target:IsPlayer() then
@@ -732,6 +730,9 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
         cmd:RemoveKey(IN_JUMP)
         cmd:RemoveKey(IN_FORWARD)
         cmd:RemoveKey(IN_BACK)
+        cmd:RemoveKey(IN_MOVELEFT)
+        cmd:RemoveKey(IN_MOVERIGHT)
+        cmd:RemoveKey(IN_DUCK)
     elseif ply:GetNW2Bool("helping_up", false) then
         cmd:ClearMovement()
         cmd:RemoveKey(IN_JUMP)
