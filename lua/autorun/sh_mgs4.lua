@@ -101,6 +101,32 @@ function ent:TraceForTarget()
     return tr.Entity
 end
 
+-- === Helper to find out the angle of the target ===
+function ent:AngleAroundTarget(target)
+    if not self or not IsValid(target) then return 0 end
+
+    local vec = ( self:GetPos() - target:GetPos() ):GetNormal():Angle().y
+    local targetAngle = target:EyeAngles().y
+    
+    if targetAngle > 360 then
+        targetAngle = targetAngle - 360
+    end
+    if targetAngle < 0 then
+        targetAngle = targetAngle + 360
+    end
+    
+    local angleAround = vec - targetAngle
+    
+    if angleAround > 360 then
+        angleAround = angleAround - 360
+    end
+    if angleAround < 0 then
+        angleAround = angleAround + 360
+    end
+
+    return angleAround
+end
+
 -- === Knockout ===
 function ent:Knockout()
     if not self then return end
@@ -185,6 +211,7 @@ function ent:Cqc_reset()
     self:SetNW2Entity("cqc_grabbing", Entity(0))
     self:SetNW2Int("cqc_type", 0)
     self:SetNW2Bool("is_grabbed", false)
+    self:SetNW2Bool("is_grabbed_crouched", false)
     self:SetNW2Bool("is_choking", false)
     self:SetNW2Bool("is_aiming", false)
 end
@@ -422,6 +449,26 @@ function ent:Cqc_throw(target, direction)
     end
 end
 
+function ent:Cqc_counter(target)
+    if not self or not IsValid(target) then return end
+
+    self:SetNW2Bool("is_in_cqc", true)
+
+    target:SetNW2Bool("is_in_cqc", true)
+    target:SetNW2Entity("cqc_grabbing", self)
+
+    local angleAround = self:AngleAroundTarget(target)
+
+    local countered_anim = 
+
+    if angleAround > 135 and angleAround <= 225 then
+        -- Countering from the back
+
+    else
+        -- Countering from the front
+    end
+end
+
 
 -- == CQC Grabbing actions ==
 function ent:Cqc_grab(target)
@@ -433,24 +480,7 @@ function ent:Cqc_grab(target)
     target:SetNW2Bool("is_in_cqc", true)
     
     -- Find out if grabbing from front or back
-    local vec = ( self:GetPos() - target:GetPos() ):GetNormal():Angle().y
-    local targetAngle = target:EyeAngles().y
-    
-    if targetAngle > 360 then
-        targetAngle = targetAngle - 360
-    end
-    if targetAngle < 0 then
-        targetAngle = targetAngle + 360
-    end
-    
-    local angleAround = vec - targetAngle
-    
-    if angleAround > 360 then
-        angleAround = angleAround - 360
-    end
-    if angleAround < 0 then
-        angleAround = angleAround + 360
-    end
+    local angleAround = self:AngleAroundTarget(target)
 
     if angleAround > 135 and angleAround <= 225 then
         -- Grabbing from back
@@ -697,12 +727,16 @@ function ent:Cqc_check()
     local is_in_cqc = self:GetNW2Bool("is_in_cqc", false)
     local cqc_target = self:TraceForTarget()
     local cqc_level = self:GetNW2Int("cqc_level", 1)
-    local will_grab = self:GetNW2Bool("will_grab", false)
 
     if is_in_cqc or cqc_level < 0 or not cqc_target then return end
 
+    local will_grab = self:GetNW2Bool("will_grab", false)
+    local cqc_target_level = cqc_target:GetNW2Int("cqc_level", 1)
+
     if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
         self:Cqc_fail()
+    elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
+        self:Cqc_counter(cqc_target)
     elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
         self:Cqc_grab(cqc_target)
     elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then

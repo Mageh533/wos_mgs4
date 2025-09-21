@@ -96,6 +96,8 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     --- 4 = Grab behind
     --- 5 = Grab front throw
     --- 6 = Grab behind throw
+    --- 7 = Countered from the front
+    --- 8 = Countered from behind
     ent:SetNW2Int("cqc_type", 0)
 
     --- Each CQC Level grants you:
