@@ -459,14 +459,41 @@ function ent:Cqc_counter(target)
 
     local angleAround = self:AngleAroundTarget(target)
 
-    local countered_anim = 
+    local countered_anim = "mgs4_cqc_countered"
+    local counter_anim
 
     if angleAround > 135 and angleAround <= 225 then
         -- Countering from the back
-
+        counter_anim = "mgs4_cqc_counter_back"
+        target:SetNW2Int("cqc_type", 8)
     else
         -- Countering from the front
+        counter_anim = "mgs4_cqc_counter_front"
+        target:SetNW2Int("cqc_type", 7)
     end
+
+    target:SVAnimationPrep(counter_anim, function()
+        target:SetNW2Bool("is_in_cqc", false)
+        target:SetNW2Entity("cqc_grabbing", Entity(0))
+        target:SetNW2Int("cqc_type", 0)
+    end)
+
+    self:SVAnimationPrep(countered_anim, function()
+        self:SetNW2Bool("is_in_cqc", false)
+
+        -- CQC level stun damage
+        local stun_damage = 50
+
+        local psyche = self:GetNW2Float("psyche", 100)
+
+        self:SetNW2Float("psyche", psyche - stun_damage)
+
+        if self:GetNW2Float("psyche", 100) > 0 then
+            self:GetUp()
+        end
+
+    end)
+
 end
 
 
