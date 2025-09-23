@@ -477,6 +477,7 @@ function ent:Cqc_counter(target)
         target:SetNW2Entity("cqc_grabbing", Entity(0))
         target:SetNW2Int("cqc_type", 0)
     end)
+    target:SetSVAnimation(counter_anim, true)
 
     self:SVAnimationPrep(countered_anim, function()
         self:SetNW2Bool("is_in_cqc", false)
@@ -493,6 +494,7 @@ function ent:Cqc_counter(target)
         end
 
     end)
+    self:SetSVAnimation(countered_anim, true)
 
 end
 
@@ -734,6 +736,30 @@ function ent:Cqc_loop()
         if target:IsPlayer() then
             target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
         end
+    elseif type == 7 then
+        -- === COUNTER FRONT ===
+        -- Ensure target is facing the player
+        local player_pos = self:GetPos()
+        local player_angle = self:GetAngles()
+
+        target:SetPos(player_pos)
+        target:SetAngles(player_angle + Angle(0, 180, 0))
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle + Angle(0, 180, 0)) -- Set the target's eye angles to face the player
+        end
+    elseif type == 8 then
+        -- === COUNTER BACK ===
+        -- Ensure target is facing away from the player
+        local player_pos = self:GetPos()
+        local player_angle = self:GetAngles()
+
+        target:SetPos(player_pos)
+        target:SetAngles(player_angle)
+
+        if target:IsPlayer() then
+            target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
+        end
     else
         -- === Generic, assume both position and angles are correct according to the player ===
         local player_pos = self:GetPos()
@@ -757,17 +783,19 @@ function ent:Cqc_check()
 
     if is_in_cqc or cqc_level < 0 or not cqc_target then return end
 
-    local will_grab = self:GetNW2Bool("will_grab", false)
-    local cqc_target_level = cqc_target:GetNW2Int("cqc_level", 1)
-
     if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNW2Bool("is_in_cqc", false) or cqc_target:GetNW2Bool("is_knocked_out", false)) then
         self:Cqc_fail()
-    elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
-        self:Cqc_counter(cqc_target)
-    elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
-        self:Cqc_grab(cqc_target)
-    elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
-        self:Cqc_throw(cqc_target)
+    else
+        local will_grab = self:GetNW2Bool("will_grab", false)
+        local cqc_target_level = cqc_target:GetNW2Int("cqc_level", 1)
+
+        if self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
+            self:Cqc_counter(cqc_target)
+        elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
+            self:Cqc_grab(cqc_target)
+        elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNW2Bool("is_in_cqc", false) and !cqc_target:GetNW2Bool("is_knocked_out", false) then
+            self:Cqc_throw(cqc_target)
+        end
     end
 end
 
