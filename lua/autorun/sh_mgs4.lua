@@ -8,6 +8,7 @@ function ent:SetSVAnimation(anim, autostop)
     self:SetNWString('SVAnim', anim)
     self:SetNWFloat('SVAnimDelay', select(2, self:LookupSequence(anim)))
     self:SetNWFloat('SVAnimStartTime', CurTime())
+    self:EmitMGS4Sound(anim)
     self:SetCycle(0)
     if autostop then
         local delay = select(2, self:LookupSequence(anim))

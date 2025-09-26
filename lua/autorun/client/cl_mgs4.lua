@@ -1,7 +1,7 @@
 include("autorun/sh_mgs4.lua")
 
 surface.CreateFont("MGS4HudNumbers", {
-    font = "HudNumbers",
+    font = "Tahoma",
     size = 72,
     blursize = 0,
     scanlines = 0,
@@ -94,3 +94,49 @@ hook.Add( "InputMouseApply", "FreezeTurning", function( cmd )
 
 end )
 
+local star = Material( "sprites/mgs4_star.png" )
+local sleep = Material( "sprites/mgs4_z.png" )
+hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function()
+    for _, ent in ipairs( ents.GetAll() ) do
+        local is_knocked_out = ent:GetNW2Bool("is_knocked_out", false)
+        local last_dmg_type = ent:GetNW2Int("last_nonlethal_damage_type", 0)
+
+        if ( is_knocked_out and last_dmg_type ~= 1 ) then
+            local attach = ent:GetAttachment( ent:LookupAttachment( "eyes" ) )
+            local psyche = ent:GetNW2Float("psyche", 0)
+
+            if ( attach ) then
+                local stars = math.Clamp( math.ceil( ( 100 - psyche ) / 20 ), 1, 5 )
+                
+                for i = 1, stars do
+                    local time = CurTime() * 3 + ( math.pi * 2 / stars * i )
+                    local offset = Vector( math.sin( time ) * 5, math.cos( time ) * 5, 10 )
+                    
+                    render.SetMaterial( star )
+                    render.DrawSprite( attach.Pos + offset, 5, 5, Color( 255, 215, 94 ) )
+                end
+            end
+        elseif ( is_knocked_out and last_dmg_type == 1 ) then
+            local attach = ent:GetAttachment( ent:LookupAttachment( "eyes" ) )
+            local psyche = ent:GetNW2Float("psyche", 0)
+
+            if ( attach ) then
+                local zzz = math.Clamp( math.ceil( ( 100 - psyche ) / 33 ), 1, 3 )
+
+                for i = 1, zzz do
+                    local time = CurTime() * 2 + ( math.pi * 4 / zzz * i * 4 )
+                    -- Each Z floats upward and slightly wobbles horizontally
+                    local vertical_offset = (time % 6 * 4) + 10
+                    local horizontal_offset = math.sin(time + i) * 4 
+                    local offset = Vector(horizontal_offset, 0, vertical_offset)
+
+                    local t = (vertical_offset - 10) / (6 * 4) -- normalized [0,1]
+                    local size = (1 - math.abs(t - 0.5) * 2) * 6 -- 8 at top/bottom, 0 at middle
+
+                    render.SetMaterial(sleep)
+                    render.DrawSprite(attach.Pos + offset, size, size, Color(255, 215, 94, 220))
+                end
+            end
+        end
+    end
+end )

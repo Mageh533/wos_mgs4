@@ -53,6 +53,9 @@ function KnockoutLoop(entity)
     if entity:GetNW2Float("psyche", 100) >= 100 then
         entity:SetNW2Bool("is_knocked_out", false)
         entity:SetNW2Float("psyche", 100)
+        if entity:GetNW2Int("last_nonlethal_damage_type", 0) ~= 1 then
+            entity:EmitSound("sfx/stars.wav", 75, 100, 1, CHAN_VOICE)
+        end
         entity:GetUp()
     else
         entity:SetNW2Bool("animation_playing", true)
@@ -69,6 +72,18 @@ function KnockoutLoop(entity)
             psyche = psyche + GetConVar("mgs4_psyche_recovery_action"):GetFloat()
             entity:SetNW2Float("psyche", math.min(psyche, 100)) -- Cap at 100
         end
+
+        -- Play stars sound effects when reaching certain psyche thresholds (but not for tranquilizer knockouts)
+        if entity:GetNW2Int("last_nonlethal_damage_type", 0) ~= 1 then
+            local prev_psyche = entity:GetNW2Float("prev_psyche", psyche)
+            local thresholds = {20, 40, 60, 80}
+            for _, threshold in ipairs(thresholds) do
+                if math.floor(prev_psyche) < threshold and math.floor(psyche) >= threshold then
+                    entity:EmitSound("sfx/stars.wav", 75, 100, 1, CHAN_VOICE)
+                end
+            end
+        end
+        entity:SetNW2Float("prev_psyche", psyche)
     end
 end
 
@@ -177,7 +192,7 @@ hook.Add("EntityTakeDamage", "MGS4EntityTakeDamage", function(ent, dmginfo)
             local psyche = ent:GetNW2Float("psyche", 100)
             psyche = psyche - dmginfo:GetDamage() * 2
             ent:SetNW2Float("psyche", math.max(psyche, 0)) -- Cap at 0
-            ent:SetNW2Int("last_nonlethal_damage_type", 2) -- Generic stun
+            ent:SetNW2Int("last_nonlethal_damage_type", 1) -- For testing purposes, to change later.
         end
     end
 end)
