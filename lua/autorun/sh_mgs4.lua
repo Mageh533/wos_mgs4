@@ -312,8 +312,7 @@ function ent:Cqc_throat_cut(target)
     self:SetNW2Bool("is_in_cqc", true)
     self:SetNW2Entity("cqc_grabbing", target)
     self:PlayMGS4Animation(knife_anim, function()
-        self:SetNW2Bool("is_in_cqc", false)
-        self:SetNW2Entity("cqc_grabbing", Entity(0))
+        self:Cqc_reset()
     end, true)
 
     target:SetNW2Int("last_nonlethal_damage_type", 1)
@@ -363,8 +362,7 @@ function ent:Cqc_throw(target, direction)
         self:SetNW2Entity("cqc_grabbing", target)
         self:ForcePosition(true, self:GetPos(), self:EyeAngles())
         self:PlayMGS4Animation("mgs4_grab_throw_forward", function()
-            self:SetNW2Bool("is_in_cqc", false)
-            self:SetNW2Entity("cqc_grabbing", Entity(0))
+            self:Cqc_reset()
             self:ForcePosition(false)
         end, true)
 
@@ -372,7 +370,7 @@ function ent:Cqc_throw(target, direction)
         target:SetNW2Bool("is_in_cqc", true)
         target:ForcePosition(true, self:GetPos(), self:EyeAngles())
         target:PlayMGS4Animation("mgs4_grabbed_throw_forward", function()
-            target:SetNW2Bool("is_in_cqc", false)
+            target:Cqc_reset()
 
             -- CQC level stun damage
             local cqc_level = self:GetNW2Int("cqc_level", 4)
@@ -395,8 +393,7 @@ function ent:Cqc_throw(target, direction)
         self:SetNW2Entity("cqc_grabbing", target)
         self:ForcePosition(true, self:GetPos(), self:EyeAngles())
         self:PlayMGS4Animation("mgs4_grab_throw_backward", function()
-            self:SetNW2Bool("is_in_cqc", false)
-            self:SetNW2Entity("cqc_grabbing", Entity(0))
+            self:Cqc_reset()
             self:ForcePosition(false)
         end, true)
 
@@ -404,7 +401,7 @@ function ent:Cqc_throw(target, direction)
         target:SetNW2Bool("is_in_cqc", true)
         target:ForcePosition(true, self:GetPos(), self:EyeAngles())
         target:PlayMGS4Animation("mgs4_grabbed_throw_backward", function()
-            target:SetNW2Bool("is_in_cqc", false)
+            target:Cqc_reset()
 
             -- CQC level stun damage
             local cqc_level = self:GetNW2Int("cqc_level", 4)
@@ -425,9 +422,8 @@ function ent:Cqc_throw(target, direction)
         -- Normal throw
         self:SetNW2Bool("is_in_cqc", true)
         self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-
         self:PlayMGS4Animation("mgs4_cqc_throw", function()
-            self:SetNW2Bool("is_in_cqc", false)
+            self:Cqc_reset()
             self:ForcePosition(false)
         end, true)
 
@@ -435,7 +431,7 @@ function ent:Cqc_throw(target, direction)
         target:SetNW2Bool("is_in_cqc", true)
         target:ForcePosition(true, self:GetPos() + (self:GetAngles():Forward() * 30), self:EyeAngles() + Angle(0, 180, 0))
         target:PlayMGS4Animation("mgs4_cqc_throw_victim", function()
-            target:SetNW2Bool("is_in_cqc", false)
+            target:Cqc_reset()
 
             -- CQC level stun damage
             local cqc_level = self:GetNW2Int("cqc_level", 4)
@@ -478,12 +474,12 @@ function ent:Cqc_counter(target)
 
     target:ForcePosition(true, target:GetPos(), target:EyeAngles())
     target:PlayMGS4Animation(counter_anim, function()
-        target:SetNW2Bool("is_in_cqc", false)
+        target:Cqc_reset()
         target:ForcePosition(false)
     end, true)
 
     self:PlayMGS4Animation(countered_anim, function()
-        self:SetNW2Bool("is_in_cqc", false)
+        self:Cqc_reset()
 
         -- CQC level stun damage
         local stun_damage = 50
@@ -615,9 +611,6 @@ function ent:Cqc_loop()
 
     -- If target or player dies, gets knocked out or player lets go. Stop the loop
     if not target:Alive() or not self:Alive() or target:GetNW2Float("psyche", 100) <= 0 or self:GetNW2Float("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) then
-        self:Cqc_reset()
-        target:Cqc_reset()
-
         -- Letgo animation on the player
         if self:Alive() and self:GetNW2Float("psyche", 100) > 0 then
             local letgo_anim
@@ -631,7 +624,11 @@ function ent:Cqc_loop()
                 letgo_anim = standed_letgo_anim
             end
 
-            self:PlayMGS4Animation(letgo_anim, nil, true)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation(letgo_anim, function ()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
         end
 
         -- Letgo animation on the target
@@ -647,13 +644,16 @@ function ent:Cqc_loop()
                 letgo_anim = standed_letgo_anim
             end
 
-            target:PlayMGS4Animation(letgo_anim, nil, true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            target:PlayMGS4Animation(letgo_anim, function ()
+                target:Cqc_reset()
+                target:ForcePosition(false)
+            end, true)
         end
 
         return
     end
 
-    -- === GRAB LOOP ===
     local player_pos = self:GetPos()
     local player_angle = self:GetAngles()
 
@@ -671,18 +671,12 @@ function ent:Cqc_loop()
             target:SetNW2Bool("is_choking", true)
         elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNW2Bool("is_grabbed_crouched", false) then
             -- Holding and moving forward throws the target in front
-            self:Cqc_reset()
-            target:Cqc_reset()
             self:Cqc_throw(target, 1)
         elseif self:GetNW2Bool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNW2Bool("is_grabbed_crouched", false) then
             -- Holding and moving backward throws the target behind
-            self:Cqc_reset()
-            target:Cqc_reset()
             self:Cqc_throw(target, 2)
         elseif self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNW2Bool("blades3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
             -- press e while holding does the throat cut
-            self:Cqc_reset()
-            target:Cqc_reset()
             self:Cqc_throat_cut(target)
         elseif not self:GetNW2Bool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNW2Bool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
             -- press e while not holding does the scan
