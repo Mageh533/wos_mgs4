@@ -125,13 +125,12 @@ hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function(
 
                 for i = 1, zzz do
                     local time = CurTime() * 2 + ( math.pi * 4 / zzz * i * 4 )
-                    -- Each Z floats upward and slightly wobbles horizontally
                     local vertical_offset = (time % 6 * 4) + 10
                     local horizontal_offset = math.sin(time + i) * 4 
                     local offset = Vector(horizontal_offset, 0, vertical_offset)
 
-                    local t = (vertical_offset - 10) / (6 * 4) -- normalized [0,1]
-                    local size = (1 - math.abs(t - 0.5) * 2) * 6 -- 8 at top/bottom, 0 at middle
+                    local t = (vertical_offset - 10) / (6 * 4)
+                    local size = (1 - math.abs(t - 0.5) * 2) * 6
 
                     render.SetMaterial(sleep)
                     render.DrawSprite(attach.Pos + offset, size, size, Color(255, 215, 94, 220))

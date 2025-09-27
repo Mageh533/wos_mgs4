@@ -25,11 +25,11 @@ hook.Add("KeyPress", "MGS4PlayerKeyPress", function(ply, key)
         ply:SetNW2Bool("will_grab", false)
     end
 
-    if key == IN_ATTACK2 and ply:GetNW2Int("cqc_type", 0) == 2 then
+    if key == IN_ATTACK2 and ply:GetNW2Entity("cqc_grabbing") ~= Entity(0) then
         ply:SetNW2Bool("is_aiming", not ply:GetNW2Bool("is_aiming", false))
     end
 
-    if key == IN_ATTACK and ply:GetNW2Int("cqc_type", 0) == 2 and not ply:GetNW2Bool("is_aiming", false) then
+    if key == IN_ATTACK and ply:GetNW2Entity("cqc_grabbing") ~= Entity(0) and not ply:GetNW2Bool("is_aiming", false) then
         ply:SetNW2Bool("is_knife", true)
     end
 
@@ -103,17 +103,10 @@ hook.Add("OnEntityCreated", "MGS4EntitySpawn", function(ent)
     ent:SetNW2Bool("is_knife", false)
     ent:SetNW2Bool("is_using", false)
 
-    --- Type of CQC action currently performing
-    --- 0 = Nothing
-    --- 1 = Throw
-    --- 2 = Grab loop
-    --- 3 = Grab front
-    --- 4 = Grab behind
-    --- 5 = Grab front throw
-    --- 6 = Grab behind throw
-    --- 7 = Countered from the front
-    --- 8 = Countered from behind
-    ent:SetNW2Int("cqc_type", 0)
+    --- Variables to force a position on the player at certain times
+    ent:SetNW2Bool("force_position", false)
+    ent:SetNW2Vector("forced_position", Vector(0, 0, 0))
+    ent:SetNW2Angle("forced_angle", Angle(0, 0, 0))
 
     --- Each CQC Level grants you:
     --- -2 = Nothing
@@ -166,7 +159,9 @@ hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
     ply:SetNW2Bool("is_aiming", false)
     ply:SetNW2Bool("is_knife", false)
     ply:SetNW2Bool("is_using", false)
-    ply:SetNW2Int("cqc_type", 0)
+    ply:SetNW2Bool("force_position", false)
+    ply:SetNW2Vector("forced_position", Vector(0, 0, 0))
+    ply:SetNW2Angle("forced_angle", Angle(0, 0, 0))
     ply:SetNW2Int("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
     ply:SetNW2Bool("cqc_button_held", false)
     ply:SetNW2Float("cqc_button_hold_time", 0)
@@ -225,7 +220,7 @@ hook.Add("Tick", "MGS4Tick", function()
         end
 
         -- Hold the button for CQC Throw and Grab
-        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.2 and entity:GetNW2Int("cqc_type", 0) ~= 2 then
+        if entity:GetNW2Float("cqc_button_hold_time", 0) > 0.2 and entity:GetNW2Entity("cqc_grabbing") == Entity(0) then
             entity:SetNW2Bool("cqc_button_held", false)
             entity:SetNW2Float("cqc_button_hold_time", 0)
             entity:Cqc_check()
@@ -235,16 +230,27 @@ hook.Add("Tick", "MGS4Tick", function()
         if entity:GetNW2Bool("is_using", false) then
             entity:GetYourselfUp()
         elseif not entity:GetNW2Bool("is_using", false) and entity:GetNW2Bool("helping_up", false) and not entity:GetNW2Bool("animation_playing", false) then
-            entity:SVAnimationPrep("mgs4_wakeup_end", function()
+            entity:PlayMGS4Animation("mgs4_wakeup_end", function()
                 entity:SetNW2Bool("helping_up", false)
-            end)
-            entity:SetSVAnimation("mgs4_wakeup_end", true)
+            end, true)
         end
 
         if entity:GetNW2Float("cqc_punch_time_left", 0) > 0 then
             entity:SetNW2Float("cqc_punch_time_left", math.max(entity:GetNW2Float("cqc_punch_time_left", 0) - FrameTime(), 0))
             if entity:GetNW2Float("cqc_punch_time_left", 0) == 0 then
                 entity:SetNW2Int("cqc_punch_combo", 0) -- Reset combo
+            end
+        end
+
+        if entity:GetNW2Bool("force_position", false) then
+            local pos = entity:GetNW2Vector("forced_position", Vector(0, 0, 0))
+            local ang = entity:GetNW2Angle("forced_angle", Angle(0, 0, 0))
+
+            entity:SetPos(pos)
+            entity:SetAngles(ang)
+
+            if entity:IsPlayer() then
+                entity:SetEyeAngles(ang)
             end
         end
 
