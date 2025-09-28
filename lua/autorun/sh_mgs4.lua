@@ -8,6 +8,7 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
     local duration = self:SequenceDuration(current_anim)
 
     self:SetNWBool("animation_playing", true)
+    self:SetNWFloat("cqc_button_hold_time", 0)
 
     self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 
@@ -141,6 +142,8 @@ end
 function ent:Knockout()
     if not self then return end
 
+    self:Cqc_reset()
+
     local knockout_type = self:GetNWInt("last_nonlethal_damage_type", 0)
     local crouched = self:Crouching()
 
@@ -161,8 +164,10 @@ function ent:Knockout()
     end
 
     if knockout_anim then
+        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
         self:PlayMGS4Animation(knockout_anim, function()
             self:SetNWBool("is_knocked_out", true)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
         end, true)
     else
         self:SetNWBool("is_knocked_out", true)
@@ -186,12 +191,19 @@ end
 function ent:GetUp()
     if not self then return end
 
+    self:ForcePosition(true, self:GetPos(), self:EyeAngles())
     if self:GetNWInt("last_nonlethal_damage_type", 0) == 0 then
-        self:PlayMGS4Animation("mgs4_stun_recover_faceup", nil, true)
+        self:PlayMGS4Animation("mgs4_stun_recover_faceup", function()
+            self:ForcePosition(false)
+        end, true)
     elseif self:GetNWInt("last_nonlethal_damage_type", 0) == 1 then
-        self:PlayMGS4Animation("mgs4_sleep_recover_facedown", nil, true)
+        self:PlayMGS4Animation("mgs4_sleep_recover_facedown", function()
+            self:ForcePosition(false)
+        end, true)
     else
-        self:PlayMGS4Animation("mgs4_stun_recover_facedown", nil, true)
+        self:PlayMGS4Animation("mgs4_stun_recover_facedown", function()
+            self:ForcePosition(false)
+        end, true)
     end
 end
 
@@ -601,9 +613,9 @@ function ent:Cqc_loop()
                 letgo_anim = standed_letgo_anim
             end
 
+            self:Cqc_reset()
             self:ForcePosition(true, self:GetPos(), self:EyeAngles())
             self:PlayMGS4Animation(letgo_anim, function ()
-                self:Cqc_reset()
                 self:ForcePosition(false)
             end, true)
         end
@@ -620,10 +632,10 @@ function ent:Cqc_loop()
             else
                 letgo_anim = standed_letgo_anim
             end
-
+            
+            target:Cqc_reset()
             target:ForcePosition(true, self:GetPos(), self:EyeAngles())
             target:PlayMGS4Animation(letgo_anim, function ()
-                target:Cqc_reset()
                 target:ForcePosition(false)
             end, true)
         end
@@ -916,10 +928,9 @@ if SERVER then
 
     -- === Handles systems every tick like grabbing and psyche ===
     hook.Add("Tick", "MGS4Tick", function()
-        local npc_and_players = ents.FindByClass("player") -- Find all players
-        npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
+        local players = ents.FindByClass("player") -- Find all players
 
-        for _, entity in ipairs(npc_and_players) do
+        for _, entity in ipairs(players) do
             if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
             if entity:GetNWFloat("psyche", 100) <= 0 and not entity:GetNWBool("is_knocked_out", false) and not entity:GetNWBool("animation_playing", false) then
@@ -931,18 +942,18 @@ if SERVER then
                 KnockoutLoop(entity)
             end
 
-            if entity:GetNWBool("cqc_button_held") then
+            if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) then
                 entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
             end
 
             -- Press it once for Punch
-            if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 then
+            if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) then
                 entity:SetNWFloat("cqc_button_hold_time", 0)
                 entity:Cqc_punch()
             end
 
             -- Hold the button for CQC Throw and Grab
-            if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == Entity(0) then
+            if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == Entity(0) and not entity:GetNWBool("animation_playing", false) then
                 entity:SetNWBool("cqc_button_held", false)
                 entity:SetNWFloat("cqc_button_hold_time", 0)
                 entity:Cqc_check()
