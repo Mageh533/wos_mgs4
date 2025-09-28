@@ -65,28 +65,6 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
     end
 end
 
--- === Helper for forcing a position and angle ===
-function ent:ForcePosition(force, pos, ang)
-    if not self then return end
-
-    if force then
-        self:SetNWBool("force_position", true)
-        if pos then
-            self:SetNWVector("forced_position", pos)
-        else
-            self:SetNWVector("forced_position", self:GetPos())
-        end
-
-        if ang then
-            self:SetNWAngle("forced_angle", ang)
-        else
-            self:SetNWAngle("forced_angle", Angle(0, self:EyeAngles().y, 0))
-        end
-    else
-        self:SetNWBool("force_position", false)
-    end
-end
-
 -- === Helper to trace a box in front of an entity ===
 function ent:TraceForTarget()
     if not self then return end
@@ -138,602 +116,625 @@ function ent:AngleAroundTarget(target)
     return angleAround
 end
 
--- === Knockout ===
-function ent:Knockout()
-    if not self then return end
-
-    self:Cqc_reset()
-
-    local knockout_type = self:GetNWInt("last_nonlethal_damage_type", 0)
-    local crouched = self:Crouching()
-
-    local knockout_anim
-
-    if knockout_type == 1 then
-        if crouched then
-            knockout_anim = "mgs4_sleep_crouched"
-        else
-            knockout_anim = "mgs4_sleep"
-        end
-    elseif knockout_type == 2 then
-        if crouched then
-            knockout_anim = "mgs4_stun_crouched"
-        else
-            knockout_anim = "mgs4_stun"
-        end
-    end
-
-    if knockout_anim then
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation(knockout_anim, function()
-            self:SetNWBool("is_knocked_out", true)
-            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        end, true)
-    else
-        self:SetNWBool("is_knocked_out", true)
-    end
-end
-
--- === Some misc actions ===
-function ent:KnockedBack(forward)
-    if not self then return end
-
-    self:ForcePosition(true, self:GetPos(), forward:Angle() + Angle(0, 180, 0))
-
-    self:PlayMGS4Animation("mgs4_knocked_back", function()
-        if self:GetNWFloat("psyche", 100) > 0 then
-            self:GetUp()
-        end
-        self:ForcePosition(false)
-    end, true)
-end
-
-function ent:GetUp()
-    if not self then return end
-
-    self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-    if self:GetNWInt("last_nonlethal_damage_type", 0) == 0 then
-        self:PlayMGS4Animation("mgs4_stun_recover_faceup", function()
-            self:ForcePosition(false)
-        end, true)
-    elseif self:GetNWInt("last_nonlethal_damage_type", 0) == 1 then
-        self:PlayMGS4Animation("mgs4_sleep_recover_facedown", function()
-            self:ForcePosition(false)
-        end, true)
-    else
-        self:PlayMGS4Animation("mgs4_stun_recover_facedown", function()
-            self:ForcePosition(false)
-        end, true)
-    end
-end
-
-function ent:Cqc_reset()
-    if not self then return end
-
-    self:SetNWBool("is_in_cqc", false)
-    self:SetNWEntity("cqc_grabbing", Entity(0))
-    self:SetNWBool("is_grabbed", false)
-    self:SetNWBool("is_grabbed_crouched", false)
-    self:SetNWBool("is_choking", false)
-    self:SetNWBool("is_aiming", false)
-    self:SetNWBool("is_knife", false)
-    self:SetNWBool("is_using", false)
-end
-
--- === CQC Actions ===
-function ent:Cqc_fail()
-    if not self then return end
-
-    local crouched = self:Crouching()
-    if crouched then
-        self:PlayMGS4Animation("mgs4_cqc_fail_crouched", function ()
-            self:SetNWBool("is_in_cqc", false)
-        end, true)
-    else
-        self:PlayMGS4Animation("mgs4_cqc_fail", function ()
-            self:SetNWBool("is_in_cqc", false)
-        end, true)
-    end
-
-    self:SetNWBool("is_in_cqc", true)
-end
-
-function ent:Cqc_punch()
-    if not self then return end
-
-    self:SetNWFloat("cqc_punch_time_left", 0.5) -- Time to extend the punch combo
-
-    if self:GetNWBool("is_in_cqc", false) then return end
-
-    self:SetNWBool("is_in_cqc", true)
-
-    local combo_count = self:GetNWInt("cqc_punch_combo", 0)
-
-    if combo_count == 0 then
-        self:PlayMGS4Animation("mgs4_punch", function ()
-            self:SetNWInt("cqc_punch_combo", 1)
-            self:Cqc_reset()
-            local tr_target = self:TraceForTarget()
-            if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
-                tr_target:SetNWInt("last_nonlethal_damage_type", 2)
-                tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
-                tr_target:SetVelocity(-tr_target:GetVelocity())
-            end
-        end, true)
-    elseif combo_count == 1 then
-        self:PlayMGS4Animation("mgs4_punch_punch", function ()
-            self:SetNWInt("cqc_punch_combo", 2)
-            self:Cqc_reset()
-            local tr_target = self:TraceForTarget()
-            if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
-                tr_target:SetNWInt("last_nonlethal_damage_type", 2)
-                tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
-                tr_target:SetVelocity(-tr_target:GetVelocity())
-            end
-        end, true)
-    elseif combo_count == 2 then
-        self:PlayMGS4Animation("mgs4_kick", function ()
-            self:SetNWInt("cqc_punch_combo", 0)
-            self:Cqc_reset()
-        end, true)
-        timer.Simple(0.35, function()
-            local tr_target = self:TraceForTarget()
-            if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
-                tr_target:SetNWInt("last_nonlethal_damage_type", 0)
-                tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 50, 0))
-                tr_target:KnockedBack(self:GetForward())
-            end
-        end)
-    end
-end
-
-function ent:Cqc_throat_cut(target)
-    if not self or not IsValid(target) then return end
-
-    local knife_anim = "mgs4_grab_knife"
-    local knifed_anim = "mgs4_grabbed_knife"
-
-    if target:GetNWBool("is_grabbed_crouched", false) then
-        knife_anim = "mgs4_grab_crouched_knife"
-        knifed_anim = "mgs4_grabbed_crouched_knife"
-    end
-
-    self:SetNWBool("is_in_cqc", true)
-    self:SetNWEntity("cqc_grabbing", target)
-    self:PlayMGS4Animation(knife_anim, function()
-        self:Cqc_reset()
-    end, true)
-
-    target:SetNWInt("last_nonlethal_damage_type", 1)
-    target:SetNWBool("is_in_cqc", true)
-    target:PlayMGS4Animation(knifed_anim, function()
-        target:SetNWBool("is_in_cqc", false)
-
-        -- Just kill them lmao
-        target:TakeDamage(1000, self, self)
-
-    end, true)
-end
-
-function ent:Cqc_sop_scan(target)
-    if not self or not IsValid(target) then return end
-
-    local scan_anim = "mgs4_grab_scan"
-    local scanned_anim = "mgs4_grabbed_scan"
-
-    if target:GetNWBool("is_grabbed_crouched", false) then
-        scan_anim = "mgs4_grab_crouched_scan"
-        scanned_anim = "mgs4_grabbed_crouched_scan"
-    end
-
-    -- Temporarily remove weapon from player until scan is complete
-    local current_weapon = self:GetActiveWeapon()
-    if IsValid(current_weapon) then
-        self:SetActiveWeapon(NULL)
-    end
-
-    self:PlayMGS4Animation(scan_anim, function()
-        -- Give back the weapon
-        if IsValid(current_weapon) then
-            self:SetActiveWeapon(current_weapon)
-        end
-    end, true)
-
-    target:PlayMGS4Animation(scanned_anim, nil, true)
-end
-
-function ent:Cqc_throw(target, direction)
-    if not self or not IsValid(target) then return end
-
-    if direction == 1 then
-        -- Throw forward
-        self:SetNWBool("is_in_cqc", true)
-        self:SetNWEntity("cqc_grabbing", target)
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation("mgs4_grab_throw_forward", function()
-            self:Cqc_reset()
-            self:ForcePosition(false)
-        end, true)
-
-        target:SetNWInt("last_nonlethal_damage_type", 3)
-        target:SetNWBool("is_in_cqc", true)
-        target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        target:PlayMGS4Animation("mgs4_grabbed_throw_forward", function()
-            target:Cqc_reset()
-
-            -- CQC level stun damage
-            local cqc_level = self:GetNWInt("cqc_level", 4)
-            local stun_damage = 10 * cqc_level
-
-            local target_psyche = target:GetNWFloat("psyche", 100)
-
-            target:SetNWFloat("psyche", target_psyche - stun_damage)
-
-            if target:GetNWFloat("psyche", 100) > 0 then
-                target:GetUp()
-            end
-
-            target:ForcePosition(false)
-
-        end, true)
-    elseif direction == 2 then
-        -- Throw backward
-        self:SetNWBool("is_in_cqc", true)
-        self:SetNWEntity("cqc_grabbing", target)
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation("mgs4_grab_throw_backward", function()
-            self:Cqc_reset()
-            self:ForcePosition(false)
-        end, true)
-
-        target:SetNWInt("last_nonlethal_damage_type", 0)
-        target:SetNWBool("is_in_cqc", true)
-        target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        target:PlayMGS4Animation("mgs4_grabbed_throw_backward", function()
-            target:Cqc_reset()
-
-            -- CQC level stun damage
-            local cqc_level = self:GetNWInt("cqc_level", 4)
-            local stun_damage = 10 * cqc_level
-
-            local target_psyche = target:GetNWFloat("psyche", 100)
-
-            target:SetNWFloat("psyche", target_psyche - stun_damage)
-        
-            if target:GetNWFloat("psyche", 100) > 0 then
-                target:GetUp()
-            end
-
-            target:ForcePosition(false)
-
-        end, true)
-    else
-        -- Normal throw
-        self:SetNWBool("is_in_cqc", true)
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation("mgs4_cqc_throw", function()
-            self:Cqc_reset()
-            self:ForcePosition(false)
-        end, true)
-
-        target:SetNWInt("last_nonlethal_damage_type", 0)
-        target:SetNWBool("is_in_cqc", true)
-        target:ForcePosition(true, self:GetPos() + (self:GetAngles():Forward() * 30), self:EyeAngles() + Angle(0, 180, 0))
-        target:PlayMGS4Animation("mgs4_cqc_throw_victim", function()
-            target:Cqc_reset()
-
-            -- CQC level stun damage
-            local cqc_level = self:GetNWInt("cqc_level", 4)
-            local stun_damage = 25 * cqc_level if cqc_level < 1 then stun_damage = 25 end
-
-            local target_psyche = target:GetNWFloat("psyche", 100)
-
-            target:SetNWFloat("psyche", target_psyche - stun_damage)
-
-            if target:GetNWFloat("psyche", 100) > 0 then
-                target:GetUp()
-            end
-
-            target:ForcePosition(false)
-        end, true)
-    end
-end
-
-function ent:Cqc_counter(target)
-    if not self or not IsValid(target) then return end
-
-    self:SetNWBool("is_in_cqc", true)
-
-    target:SetNWBool("is_in_cqc", true)
-
-    local angleAround = self:AngleAroundTarget(target)
-
-    local countered_anim = "mgs4_cqc_countered"
-    local counter_anim
-
-    if angleAround > 135 and angleAround <= 225 then
-        -- Countering from the back
-        counter_anim = "mgs4_cqc_counter_back"
-        self:ForcePosition(true, target:GetPos(), target:EyeAngles())
-    else
-        -- Countering from the front
-        counter_anim = "mgs4_cqc_counter_front"
-        self:ForcePosition(true, target:GetPos(), target:EyeAngles() + Angle(0, 180, 0))
-    end
-
-    target:ForcePosition(true, target:GetPos(), target:EyeAngles())
-    target:PlayMGS4Animation(counter_anim, function()
-        target:Cqc_reset()
-        target:ForcePosition(false)
-    end, true)
-
-    self:PlayMGS4Animation(countered_anim, function()
-        self:Cqc_reset()
-
-        -- CQC level stun damage
-        local stun_damage = 50
-
-        local psyche = self:GetNWFloat("psyche", 100)
-
-        self:SetNWFloat("psyche", psyche - stun_damage)
-
-        if self:GetNWFloat("psyche", 100) > 0 then
-            self:GetUp()
-        end
-
-        self:ForcePosition(false)
-    end, true)
-
-end
-
-
--- == CQC Grabbing actions ==
-function ent:Cqc_grab(target)
-    if not self or not IsValid(target) then return end
-
-    self:SetNWBool("is_in_cqc", true)
-
-    target:SetNWBool("is_in_cqc", true)
-    
-    -- Find out if grabbing from front or back
-    local angleAround = self:AngleAroundTarget(target)
-
-    if angleAround > 135 and angleAround <= 225 then
-        -- Grabbing from back
-        local grab_anim
-        local grabbed_anim
-
-        local grab_standing_anim = "mgs4_grab_behind"
-        local grabbed_standing_anim = "mgs4_grabbed_behind"
-        local grab_crouched_anim = "mgs4_grab_crouched_behind"
-        local grabbed_crouched_anim = "mgs4_grabbed_crouched_behind"
-
-        if self:Crouching() then
-            grab_anim = grab_crouched_anim
-            grabbed_anim = grabbed_crouched_anim
-        else
-            grab_anim = grab_standing_anim
-            grabbed_anim = grabbed_standing_anim
-        end
-
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation(grab_anim, function ()
-            self:SetNWEntity("cqc_grabbing", target)
-            self:ForcePosition(false)
-        end, true)
-        target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        target:PlayMGS4Animation(grabbed_anim, function ()
-            target:SetNWBool("is_grabbed", true)
-            target:ForcePosition(false)
-        end, true)
-    else
-        -- Grabbing from front
-        local grab_anim
-        local grabbed_anim
-
-        local grab_standing_anim = "mgs4_grab_front"
-        local grabbed_standing_anim = "mgs4_grabbed_front"
-
-        local grab_crouched_anim = "mgs4_grab_crouched_front"
-        local grabbed_crouched_anim = "mgs4_grabbed_crouched_front"
-
-        if self:Crouching() then
-            grab_anim = grab_crouched_anim
-            grabbed_anim = grabbed_crouched_anim
-        else
-            grab_anim = grab_standing_anim
-            grabbed_anim = grabbed_standing_anim
-        end
-
-
-        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-        self:PlayMGS4Animation(grab_anim, function ()
-            self:SetNWEntity("cqc_grabbing", target)
-            self:ForcePosition(false)
-        end, true)
-        target:ForcePosition(true, self:GetPos(), self:EyeAngles() + Angle(0, 180, 0))
-        target:PlayMGS4Animation(grabbed_anim, function()
-            target:SetNWBool("is_grabbed", true)
-            target:ForcePosition(false)
-        end, true)
-    end
-
-    if self:Crouching() then
-        target:SetNWBool("is_grabbed_crouched", true)
-    else
-        target:SetNWBool("is_grabbed_crouched", false)
-    end
-end
-
-function ent:Cqc_grab_crouch(target)
-    if not self or not IsValid(target) then return end
-
-    if not target:GetNWBool("is_grabbed_crouched", false) then
-        self:PlayMGS4Animation("mgs4_grab_crouch", nil, true)
-
-        target:PlayMGS4Animation("mgs4_grabbed_crouch", function ()
-            target:SetNWBool("is_grabbed_crouched", true)
-        end, true)
-    else
-        self:PlayMGS4Animation("mgs4_grab_crouched_stand", nil, true)
-
-        target:PlayMGS4Animation("mgs4_grabbed_crouched_stand", function ()
-            target:SetNWBool("is_grabbed_crouched", false)
-        end, true)
-    end
-end
-
-function ent:Cqc_grab_move(target)
-    if not self or not IsValid(target) then return end
-
-    self:PlayMGS4Animation("mgs4_grab_move", nil, true)
-
-    target:PlayMGS4Animation("mgs4_grabbed_move", nil, true)
-end
-
--- == Loop sequence to ensure correct positions at all times and handle grabbing actions ==
-function ent:Cqc_loop()
-    if not self then return end
-
-    local target = self:GetNWEntity("cqc_grabbing", Entity(0))
-    if not IsValid(target) then return end
-
-    -- If target or player dies, gets knocked out or player lets go. Stop the loop
-    if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) then
-        -- Letgo animation on the player
-        if self:Alive() and self:GetNWFloat("psyche", 100) > 0 then
-            local letgo_anim
-
-            local standed_letgo_anim = "mgs4_grab_letgo"
-            local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
-
-            if target:GetNWBool("is_grabbed_crouched", false) then
-                letgo_anim = crouched_letgo_anim
+if SERVER then
+    -- === Helper for forcing a position and angle ===
+    function ent:ForcePosition(force, pos, ang)
+        if not self then return end
+
+        if force then
+            self:SetNWBool("force_position", true)
+            if pos then
+                self:SetNWVector("forced_position", pos)
             else
-                letgo_anim = standed_letgo_anim
+                self:SetNWVector("forced_position", self:GetPos())
             end
 
-            self:Cqc_reset()
+            if ang then
+                self:SetNWAngle("forced_angle", ang)
+            else
+                self:SetNWAngle("forced_angle", Angle(0, self:EyeAngles().y, 0))
+            end
+        else
+            self:SetNWBool("force_position", false)
+        end
+    end
+
+
+    -- === Knockout ===
+    function ent:Knockout()
+        if not self then return end
+
+        self:Cqc_reset()
+
+        local knockout_type = self:GetNWInt("last_nonlethal_damage_type", 0)
+        local crouched = self:Crouching()
+
+        local knockout_anim
+
+        if knockout_type == 1 then
+            if crouched then
+                knockout_anim = "mgs4_sleep_crouched"
+            else
+                knockout_anim = "mgs4_sleep"
+            end
+        elseif knockout_type == 2 then
+            if crouched then
+                knockout_anim = "mgs4_stun_crouched"
+            else
+                knockout_anim = "mgs4_stun"
+            end
+        end
+
+        if knockout_anim then
             self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-            self:PlayMGS4Animation(letgo_anim, function ()
+            self:PlayMGS4Animation(knockout_anim, function()
+                self:SetNWBool("is_knocked_out", true)
+                self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            end, true)
+        else
+            self:SetNWBool("is_knocked_out", true)
+        end
+    end
+
+    -- === Some misc actions ===
+    function ent:KnockedBack(forward)
+        if not self then return end
+
+        self:ForcePosition(true, self:GetPos(), forward:Angle() + Angle(0, 180, 0))
+
+        self:PlayMGS4Animation("mgs4_knocked_back", function()
+            if self:GetNWFloat("psyche", 100) > 0 then
+                self:GetUp()
+            end
+            self:ForcePosition(false)
+        end, true)
+    end
+
+    function ent:GetUp()
+        if not self then return end
+
+        self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+        if self:GetNWInt("last_nonlethal_damage_type", 0) == 0 then
+            self:PlayMGS4Animation("mgs4_stun_recover_faceup", function()
+                self:ForcePosition(false)
+            end, true)
+        elseif self:GetNWInt("last_nonlethal_damage_type", 0) == 1 then
+            self:PlayMGS4Animation("mgs4_sleep_recover_facedown", function()
+                self:ForcePosition(false)
+            end, true)
+        else
+            self:PlayMGS4Animation("mgs4_stun_recover_facedown", function()
                 self:ForcePosition(false)
             end, true)
         end
+    end
 
-        -- Letgo animation on the target
-        if target:Alive() and target:GetNWFloat("psyche", 100) > 0 then
-            local letgo_anim
+    function ent:Cqc_reset()
+        if not self then return end
 
-            local standed_letgo_anim = "mgs4_grabbed_letgo"
-            local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
+        self:SetNWBool("is_in_cqc", false)
+        self:SetNWEntity("cqc_grabbing", Entity(0))
+        self:SetNWBool("is_grabbed", false)
+        self:SetNWBool("is_grabbed_crouched", false)
+        self:SetNWBool("is_choking", false)
+        self:SetNWBool("is_aiming", false)
+        self:SetNWBool("is_knife", false)
+        self:SetNWBool("is_using", false)
+    end
 
-            if target:GetNWBool("is_grabbed_crouched", false) then
-                letgo_anim = crouched_letgo_anim
-            else
-                letgo_anim = standed_letgo_anim
+    -- === CQC Actions ===
+    function ent:Cqc_fail()
+        if not self then return end
+
+        local crouched = self:Crouching()
+        if crouched then
+            self:PlayMGS4Animation("mgs4_cqc_fail_crouched", function ()
+                self:SetNWBool("is_in_cqc", false)
+            end, true)
+        else
+            self:PlayMGS4Animation("mgs4_cqc_fail", function ()
+                self:SetNWBool("is_in_cqc", false)
+            end, true)
+        end
+
+        self:SetNWBool("is_in_cqc", true)
+    end
+
+    function ent:Cqc_punch()
+        if not self then return end
+
+        self:SetNWFloat("cqc_punch_time_left", 0.5) -- Time to extend the punch combo
+
+        if self:GetNWBool("is_in_cqc", false) then return end
+
+        self:SetNWBool("is_in_cqc", true)
+
+        local combo_count = self:GetNWInt("cqc_punch_combo", 0)
+
+        if combo_count == 0 then
+            self:PlayMGS4Animation("mgs4_punch", function ()
+                self:SetNWInt("cqc_punch_combo", 1)
+                self:Cqc_reset()
+                local tr_target = self:TraceForTarget()
+                if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
+                    tr_target:SetNWInt("last_nonlethal_damage_type", 2)
+                    tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
+                    tr_target:SetVelocity(-tr_target:GetVelocity())
+                end
+            end, true)
+        elseif combo_count == 1 then
+            self:PlayMGS4Animation("mgs4_punch_punch", function ()
+                self:SetNWInt("cqc_punch_combo", 2)
+                self:Cqc_reset()
+                local tr_target = self:TraceForTarget()
+                if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
+                    tr_target:SetNWInt("last_nonlethal_damage_type", 2)
+                    tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
+                    tr_target:SetVelocity(-tr_target:GetVelocity())
+                end
+            end, true)
+        elseif combo_count == 2 then
+            self:PlayMGS4Animation("mgs4_kick", function ()
+                self:SetNWInt("cqc_punch_combo", 0)
+                self:Cqc_reset()
+            end, true)
+            timer.Simple(0.35, function()
+                local tr_target = self:TraceForTarget()
+                if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
+                    tr_target:SetNWInt("last_nonlethal_damage_type", 0)
+                    tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 50, 0))
+                    tr_target:KnockedBack(self:GetForward())
+                end
+            end)
+        end
+    end
+
+    function ent:Cqc_throat_cut(target)
+        if not self or not IsValid(target) then return end
+
+        local knife_anim = "mgs4_grab_knife"
+        local knifed_anim = "mgs4_grabbed_knife"
+
+        if target:GetNWBool("is_grabbed_crouched", false) then
+            knife_anim = "mgs4_grab_crouched_knife"
+            knifed_anim = "mgs4_grabbed_crouched_knife"
+        end
+
+        self:SetNWBool("is_in_cqc", true)
+        self:SetNWEntity("cqc_grabbing", target)
+        self:PlayMGS4Animation(knife_anim, function()
+            self:Cqc_reset()
+        end, true)
+
+        target:SetNWInt("last_nonlethal_damage_type", 1)
+        target:SetNWBool("is_in_cqc", true)
+        target:PlayMGS4Animation(knifed_anim, function()
+            target:SetNWBool("is_in_cqc", false)
+
+            -- Just kill them lmao
+            target:TakeDamage(1000, self, self)
+
+        end, true)
+    end
+
+    function ent:Cqc_sop_scan(target)
+        if not self or not IsValid(target) then return end
+
+        local scan_anim = "mgs4_grab_scan"
+        local scanned_anim = "mgs4_grabbed_scan"
+
+        if target:GetNWBool("is_grabbed_crouched", false) then
+            scan_anim = "mgs4_grab_crouched_scan"
+            scanned_anim = "mgs4_grabbed_crouched_scan"
+        end
+
+        -- Temporarily remove weapon from player until scan is complete
+        local current_weapon = self:GetActiveWeapon()
+        if IsValid(current_weapon) then
+            self:SetActiveWeapon(NULL)
+        end
+
+        self:PlayMGS4Animation(scan_anim, function()
+            -- Give back the weapon
+            if IsValid(current_weapon) then
+                self:SetActiveWeapon(current_weapon)
             end
-            
-            target:Cqc_reset()
+        end, true)
+
+        target:PlayMGS4Animation(scanned_anim, nil, true)
+    end
+
+    function ent:Cqc_throw(target, direction)
+        if not self or not IsValid(target) then return end
+
+        if direction == 1 then
+            -- Throw forward
+            self:SetNWBool("is_in_cqc", true)
+            self:SetNWEntity("cqc_grabbing", target)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation("mgs4_grab_throw_forward", function()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
+
+            target:SetNWInt("last_nonlethal_damage_type", 3)
+            target:SetNWBool("is_in_cqc", true)
             target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-            target:PlayMGS4Animation(letgo_anim, function ()
+            target:PlayMGS4Animation("mgs4_grabbed_throw_forward", function()
+                target:Cqc_reset()
+
+                -- CQC level stun damage
+                local cqc_level = self:GetNWInt("cqc_level", 4)
+                local stun_damage = 10 * cqc_level
+
+                local target_psyche = target:GetNWFloat("psyche", 100)
+
+                target:SetNWFloat("psyche", target_psyche - stun_damage)
+
+                if target:GetNWFloat("psyche", 100) > 0 then
+                    target:GetUp()
+                end
+
+                target:ForcePosition(false)
+
+            end, true)
+        elseif direction == 2 then
+            -- Throw backward
+            self:SetNWBool("is_in_cqc", true)
+            self:SetNWEntity("cqc_grabbing", target)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation("mgs4_grab_throw_backward", function()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
+
+            target:SetNWInt("last_nonlethal_damage_type", 0)
+            target:SetNWBool("is_in_cqc", true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            target:PlayMGS4Animation("mgs4_grabbed_throw_backward", function()
+                target:Cqc_reset()
+
+                -- CQC level stun damage
+                local cqc_level = self:GetNWInt("cqc_level", 4)
+                local stun_damage = 10 * cqc_level
+
+                local target_psyche = target:GetNWFloat("psyche", 100)
+
+                target:SetNWFloat("psyche", target_psyche - stun_damage)
+            
+                if target:GetNWFloat("psyche", 100) > 0 then
+                    target:GetUp()
+                end
+
+                target:ForcePosition(false)
+
+            end, true)
+        else
+            -- Normal throw
+            self:SetNWBool("is_in_cqc", true)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation("mgs4_cqc_throw", function()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
+
+            target:SetNWInt("last_nonlethal_damage_type", 0)
+            target:SetNWBool("is_in_cqc", true)
+            target:ForcePosition(true, self:GetPos() + (self:GetAngles():Forward() * 30), self:EyeAngles() + Angle(0, 180, 0))
+            target:PlayMGS4Animation("mgs4_cqc_throw_victim", function()
+                target:Cqc_reset()
+
+                -- CQC level stun damage
+                local cqc_level = self:GetNWInt("cqc_level", 4)
+                local stun_damage = 25 * cqc_level if cqc_level < 1 then stun_damage = 25 end
+
+                local target_psyche = target:GetNWFloat("psyche", 100)
+
+                target:SetNWFloat("psyche", target_psyche - stun_damage)
+
+                if target:GetNWFloat("psyche", 100) > 0 then
+                    target:GetUp()
+                end
+
+                target:ForcePosition(false)
+            end, true)
+        end
+    end
+
+    function ent:Cqc_counter(target)
+        if not self or not IsValid(target) then return end
+
+        self:SetNWBool("is_in_cqc", true)
+
+        target:SetNWBool("is_in_cqc", true)
+
+        local angleAround = self:AngleAroundTarget(target)
+
+        local countered_anim = "mgs4_cqc_countered"
+        local counter_anim
+
+        if angleAround > 135 and angleAround <= 225 then
+            -- Countering from the back
+            counter_anim = "mgs4_cqc_counter_back"
+            self:ForcePosition(true, target:GetPos(), target:EyeAngles())
+        else
+            -- Countering from the front
+            counter_anim = "mgs4_cqc_counter_front"
+            self:ForcePosition(true, target:GetPos(), target:EyeAngles() + Angle(0, 180, 0))
+        end
+
+        target:ForcePosition(true, target:GetPos(), target:EyeAngles())
+        target:PlayMGS4Animation(counter_anim, function()
+            target:Cqc_reset()
+            target:ForcePosition(false)
+        end, true)
+
+        self:PlayMGS4Animation(countered_anim, function()
+            self:Cqc_reset()
+
+            -- CQC level stun damage
+            local stun_damage = 50
+
+            local psyche = self:GetNWFloat("psyche", 100)
+
+            self:SetNWFloat("psyche", psyche - stun_damage)
+
+            if self:GetNWFloat("psyche", 100) > 0 then
+                self:GetUp()
+            end
+
+            self:ForcePosition(false)
+        end, true)
+
+    end
+
+
+    -- == CQC Grabbing actions ==
+    function ent:Cqc_grab(target)
+        if not self or not IsValid(target) then return end
+
+        self:SetNWBool("is_in_cqc", true)
+
+        target:SetNWBool("is_in_cqc", true)
+        
+        -- Find out if grabbing from front or back
+        local angleAround = self:AngleAroundTarget(target)
+
+        if angleAround > 135 and angleAround <= 225 then
+            -- Grabbing from back
+            local grab_anim
+            local grabbed_anim
+
+            local grab_standing_anim = "mgs4_grab_behind"
+            local grabbed_standing_anim = "mgs4_grabbed_behind"
+            local grab_crouched_anim = "mgs4_grab_crouched_behind"
+            local grabbed_crouched_anim = "mgs4_grabbed_crouched_behind"
+
+            if self:Crouching() then
+                grab_anim = grab_crouched_anim
+                grabbed_anim = grabbed_crouched_anim
+            else
+                grab_anim = grab_standing_anim
+                grabbed_anim = grabbed_standing_anim
+            end
+
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation(grab_anim, function ()
+                self:SetNWEntity("cqc_grabbing", target)
+                self:ForcePosition(false)
+            end, true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            target:PlayMGS4Animation(grabbed_anim, function ()
+                target:SetNWBool("is_grabbed", true)
+                target:ForcePosition(false)
+            end, true)
+        else
+            -- Grabbing from front
+            local grab_anim
+            local grabbed_anim
+
+            local grab_standing_anim = "mgs4_grab_front"
+            local grabbed_standing_anim = "mgs4_grabbed_front"
+
+            local grab_crouched_anim = "mgs4_grab_crouched_front"
+            local grabbed_crouched_anim = "mgs4_grabbed_crouched_front"
+
+            if self:Crouching() then
+                grab_anim = grab_crouched_anim
+                grabbed_anim = grabbed_crouched_anim
+            else
+                grab_anim = grab_standing_anim
+                grabbed_anim = grabbed_standing_anim
+            end
+
+
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation(grab_anim, function ()
+                self:SetNWEntity("cqc_grabbing", target)
+                self:ForcePosition(false)
+            end, true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles() + Angle(0, 180, 0))
+            target:PlayMGS4Animation(grabbed_anim, function()
+                target:SetNWBool("is_grabbed", true)
                 target:ForcePosition(false)
             end, true)
         end
 
-        return
-    end
-
-    local player_pos = self:GetPos()
-    local player_angle = self:GetAngles()
-
-    target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
-    target:SetEyeAngles(player_angle)
-
-    self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
-
-    if not self:GetNWBool("is_aiming", false) then
-        -- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
-        if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
-            -- Holding the CQC button starts choking
-            target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - 0.5, 0))
-            target:SetNWInt("last_nonlethal_damage_type", 2)
-            target:SetNWBool("is_choking", true)
-        elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
-            -- Holding and moving forward throws the target in front
-            self:Cqc_throw(target, 1)
-        elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
-            -- Holding and moving backward throws the target behind
-            self:Cqc_throw(target, 2)
-        elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("blades3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
-            -- press e while holding does the throat cut
-            self:Cqc_throat_cut(target)
-        elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
-            -- press e while not holding does the scan
-            self:Cqc_sop_scan(target)
-        elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
-            -- Pressing back button moves backwards
-            self:Cqc_grab_move(target)
-        elseif self:KeyPressed(IN_DUCK) then
-            -- Pressing crouch makes both the player and target crouch while grabbing
-            self:Cqc_grab_crouch(target)
+        if self:Crouching() then
+            target:SetNWBool("is_grabbed_crouched", true)
         else
-            target:SetNWBool("is_choking", false)
+            target:SetNWBool("is_grabbed_crouched", false)
         end
     end
 
-    target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
-end
+    function ent:Cqc_grab_crouch(target)
+        if not self or not IsValid(target) then return end
 
-function ent:Cqc_check()
-    if not self then return end
+        if not target:GetNWBool("is_grabbed_crouched", false) then
+            self:PlayMGS4Animation("mgs4_grab_crouch", nil, true)
 
-    local is_in_cqc = self:GetNWBool("is_in_cqc", false)
-    local cqc_target = self:TraceForTarget()
-    local cqc_level = self:GetNWInt("cqc_level", 1)
+            target:PlayMGS4Animation("mgs4_grabbed_crouch", function ()
+                target:SetNWBool("is_grabbed_crouched", true)
+            end, true)
+        else
+            self:PlayMGS4Animation("mgs4_grab_crouched_stand", nil, true)
 
-    if is_in_cqc or cqc_level < 0 or not cqc_target then return end
-
-    if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false)) then
-        self:Cqc_fail()
-    else
-        local will_grab = self:GetNWBool("will_grab", false)
-        local cqc_target_level = cqc_target:GetNWInt("cqc_level", 1)
-
-        if self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
-            self:Cqc_counter(cqc_target)
-        elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
-            self:Cqc_grab(cqc_target)
-        elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
-            self:Cqc_throw(cqc_target)
+            target:PlayMGS4Animation("mgs4_grabbed_crouched_stand", function ()
+                target:SetNWBool("is_grabbed_crouched", false)
+            end, true)
         end
     end
-end
 
--- Not literally helping yourself (you are helping another get up, its an mgo2 reference)
-function ent:GetYourselfUp()
-    if not self then return end
+    function ent:Cqc_grab_move(target)
+        if not self or not IsValid(target) then return end
 
-    local target = self:TraceForTarget()
+        self:PlayMGS4Animation("mgs4_grab_move", nil, true)
 
-    if not target or not IsValid(target) then
-        self:SetNWBool("helping_up", false)
-        return
+        target:PlayMGS4Animation("mgs4_grabbed_move", nil, true)
     end
 
-    if self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) then
-        target:SetNWFloat("psyche", target:GetNWFloat("psyche", 100) + (GetConVar("mgs4_psyche_recovery_action"):GetFloat() * FrameTime() * 10))
-    elseif not self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and self:Crouching() then
-        self:PlayMGS4Animation("mgs4_wakeup_start", function()
-            self:SetNWBool("helping_up", true)
-            self:SetCycle(0)
-        end, true)
-    elseif self:GetNWBool("helping_up", false) and not target:GetNWBool("is_knocked_out", false) then
-        self:SetNWBool("is_using", false)
+    -- == Loop sequence to ensure correct positions at all times and handle grabbing actions ==
+    function ent:Cqc_loop()
+        if not self then return end
+
+        local target = self:GetNWEntity("cqc_grabbing", Entity(0))
+        if not IsValid(target) then return end
+
+        -- If target or player dies, gets knocked out or player lets go. Stop the loop
+        if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) then
+            -- Letgo animation on the player
+            if self:Alive() and self:GetNWFloat("psyche", 100) > 0 then
+                local letgo_anim
+
+                local standed_letgo_anim = "mgs4_grab_letgo"
+                local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
+
+                if target:GetNWBool("is_grabbed_crouched", false) then
+                    letgo_anim = crouched_letgo_anim
+                else
+                    letgo_anim = standed_letgo_anim
+                end
+
+                self:Cqc_reset()
+                self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+                self:PlayMGS4Animation(letgo_anim, function ()
+                    self:ForcePosition(false)
+                end, true)
+            end
+
+            -- Letgo animation on the target
+            if target:Alive() and target:GetNWFloat("psyche", 100) > 0 then
+                local letgo_anim
+
+                local standed_letgo_anim = "mgs4_grabbed_letgo"
+                local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
+
+                if target:GetNWBool("is_grabbed_crouched", false) then
+                    letgo_anim = crouched_letgo_anim
+                else
+                    letgo_anim = standed_letgo_anim
+                end
+                
+                target:Cqc_reset()
+                target:ForcePosition(true, self:GetPos(), self:EyeAngles())
+                target:PlayMGS4Animation(letgo_anim, function ()
+                    target:ForcePosition(false)
+                end, true)
+            end
+
+            return
+        end
+
+        local player_pos = self:GetPos()
+        local player_angle = self:GetAngles()
+
+        target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
+        target:SetEyeAngles(player_angle)
+
+        self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
+
+        if not self:GetNWBool("is_aiming", false) then
+            -- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
+            if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+                -- Holding the CQC button starts choking
+                target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - 0.5, 0))
+                target:SetNWInt("last_nonlethal_damage_type", 2)
+                target:SetNWBool("is_choking", true)
+            elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+                -- Holding and moving forward throws the target in front
+                self:Cqc_throw(target, 1)
+            elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+                -- Holding and moving backward throws the target behind
+                self:Cqc_throw(target, 2)
+            elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("blades3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+                -- press e while holding does the throat cut
+                self:Cqc_throat_cut(target)
+            elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+                -- press e while not holding does the scan
+                self:Cqc_sop_scan(target)
+            elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+                -- Pressing back button moves backwards
+                self:Cqc_grab_move(target)
+            elseif self:KeyPressed(IN_DUCK) then
+                -- Pressing crouch makes both the player and target crouch while grabbing
+                self:Cqc_grab_crouch(target)
+            else
+                target:SetNWBool("is_choking", false)
+            end
+        end
+
+        target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
     end
 
-end
+    function ent:Cqc_check()
+        if not self then return end
 
-if SERVER then
+        local is_in_cqc = self:GetNWBool("is_in_cqc", false)
+        local cqc_target = self:TraceForTarget()
+        local cqc_level = self:GetNWInt("cqc_level", 1)
+
+        if is_in_cqc or cqc_level < 0 or not cqc_target then return end
+
+        if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false)) then
+            self:Cqc_fail()
+        else
+            local will_grab = self:GetNWBool("will_grab", false)
+            local cqc_target_level = cqc_target:GetNWInt("cqc_level", 1)
+
+            if self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
+                self:Cqc_counter(cqc_target)
+            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
+                self:Cqc_grab(cqc_target)
+            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
+                self:Cqc_throw(cqc_target)
+            end
+        end
+    end
+
+    -- Not literally helping yourself (you are helping another get up, its an mgo2 reference)
+    function ent:GetYourselfUp()
+        if not self then return end
+
+        local target = self:TraceForTarget()
+
+        if not target or not IsValid(target) then
+            self:SetNWBool("helping_up", false)
+            return
+        end
+
+        if self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) then
+            target:SetNWFloat("psyche", target:GetNWFloat("psyche", 100) + (GetConVar("mgs4_psyche_recovery_action"):GetFloat() * FrameTime() * 10))
+        elseif not self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and self:Crouching() then
+            self:PlayMGS4Animation("mgs4_wakeup_start", function()
+                self:SetNWBool("helping_up", true)
+                self:SetCycle(0)
+            end, true)
+        elseif self:GetNWBool("helping_up", false) and not target:GetNWBool("is_knocked_out", false) then
+            self:SetNWBool("is_using", false)
+        end
+
+    end
+
     -- === Handling the CQC buttons ===
     -- Not gonna lie, I have no idea if this is even a good way to do this. It seems to convoluted, but it works so screw it.
 
