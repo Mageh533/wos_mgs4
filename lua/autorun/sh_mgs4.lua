@@ -496,6 +496,8 @@ if SERVER then
         self:SetNWBool("is_in_cqc", true)
 
         target:SetNWBool("is_in_cqc", true)
+
+        target:SetNWFloat("grab_escape_progress", 100)
         
         -- Find out if grabbing from front or back
         local angleAround = self:AngleAroundTarget(target)
@@ -601,18 +603,28 @@ if SERVER then
         if not IsValid(target) then return end
 
         -- If target or player dies, gets knocked out or player lets go. Stop the loop
-        if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) then
+        if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) or target:GetNWFloat("grab_escape_progress", 0) <= 0 then
             -- Letgo animation on the player
             if self:Alive() and self:GetNWFloat("psyche", 100) > 0 then
                 local letgo_anim
 
                 local standed_letgo_anim = "mgs4_grab_letgo"
+                local standed_escaped_anim = "mgs4_grab_escaped"
                 local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
+                local crouched_escaped_anim = "mgs4_grab_crouched_escaped"
 
                 if target:GetNWBool("is_grabbed_crouched", false) then
-                    letgo_anim = crouched_letgo_anim
+                    if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+                        letgo_anim = crouched_escaped_anim
+                    else
+                        letgo_anim = crouched_letgo_anim
+                    end
                 else
-                    letgo_anim = standed_letgo_anim
+                    if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+                        letgo_anim = standed_escaped_anim
+                    else
+                        letgo_anim = standed_letgo_anim
+                    end
                 end
 
                 self:Cqc_reset()
@@ -627,12 +639,22 @@ if SERVER then
                 local letgo_anim
 
                 local standed_letgo_anim = "mgs4_grabbed_letgo"
+                local standed_escaped_anim = "mgs4_grabbed_escaped"
                 local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
+                local crouched_escaped_anim = "mgs4_grabbed_crouched_escaped"
 
                 if target:GetNWBool("is_grabbed_crouched", false) then
-                    letgo_anim = crouched_letgo_anim
+                    if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+                        letgo_anim = crouched_escaped_anim
+                    else
+                        letgo_anim = crouched_letgo_anim
+                    end
                 else
-                    letgo_anim = standed_letgo_anim
+                    if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+                        letgo_anim = standed_escaped_anim
+                    else
+                        letgo_anim = standed_letgo_anim
+                    end
                 end
                 
                 target:Cqc_reset()
@@ -651,13 +673,18 @@ if SERVER then
         target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
         target:SetEyeAngles(player_angle)
 
+        -- Decrease the escape progress over time, faster if the player has low CQC level
+        target:SetNWFloat("grab_escape_progress", math.max(target:GetNWFloat("grab_escape_progress", 100) - ((1 / self:GetNWInt("cqc_level", 1)) * FrameTime() * 25), 0))
+
+        print(target:GetNWFloat("grab_escape_progress", 100))
+
         self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
 
         if not self:GetNWBool("is_aiming", false) then
             -- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
             if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
                 -- Holding the CQC button starts choking
-                target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - 0.5, 0))
+                target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - ((20 * FrameTime()) * self:GetNWInt("cqc_level", 1)), 0))
                 target:SetNWInt("last_nonlethal_damage_type", 2)
                 target:SetNWBool("is_choking", true)
             elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
@@ -838,6 +865,9 @@ if SERVER then
         ent:SetNWBool("is_knife", false)
         ent:SetNWBool("is_using", false)
 
+        --- Progress remaining to escape a grab.
+        ent:SetNWFloat("grab_escape_progress", 100)
+
         --- Variables to force a position on the player at certain times
         ent:SetNWBool("force_position", false)
         ent:SetNWVector("forced_position", Vector(0, 0, 0))
@@ -894,6 +924,7 @@ if SERVER then
         ply:SetNWBool("is_aiming", false)
         ply:SetNWBool("is_knife", false)
         ply:SetNWBool("is_using", false)
+        ply:SetNWFloat("grab_escape_progress", 100)
         ply:SetNWBool("force_position", false)
         ply:SetNWVector("forced_position", Vector(0, 0, 0))
         ply:SetNWAngle("forced_angle", Angle(0, 0, 0))
