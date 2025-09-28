@@ -80,5 +80,42 @@ function ent:EmitMGS4Sound(anim)
         timer.Simple(1, function()
             self:EmitSound("sfx/thrown.wav", 75, 100, 1, CHAN_WEAPON)
         end)
+    elseif anim == "mgs4_gun_attack" then
+        timer.Simple(0.35, function()
+            self:EmitSound("sfx/air.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_cqc_throw_gun_front" then
+        timer.Simple(0.1, function()
+            self:EmitSound("sfx/grab.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+        timer.Simple(0.8, function()
+            self:EmitSound("sfx/cqc.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_cqc_throw_gun_front_victim" then
+        timer.Simple(1.3, function()
+            self:EmitSound("sfx/thrown.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_cqc_throw_gun_back" then
+        timer.Simple(0.1, function()
+            self:EmitSound("sfx/grab.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+        timer.Simple(1.4, function()
+            self:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+        timer.Simple(1.9, function()
+            self:EmitSound("sfx/cqc.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_cqc_throw_gun_back_victim" then
+        timer.Simple(2.4, function()
+            self:EmitSound("sfx/thrown.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_punch" or anim == "mgs4_punch_punch" then
+        timer.Simple(0.1, function()
+            self:EmitSound("sfx/air.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+    elseif anim == "mgs4_kick" then
+        timer.Simple(0.3, function()
+            self:EmitSound("sfx/air.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
     end
 end

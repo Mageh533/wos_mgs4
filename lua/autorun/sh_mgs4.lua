@@ -245,6 +245,27 @@ if SERVER then
 
         self:SetNWFloat("cqc_punch_time_left", 0.5) -- Time to extend the punch combo
 
+        -- Players cannot punch with 2 handed weapons
+        local current_weapon = self:GetActiveWeapon()
+
+        if IsValid(current_weapon) then
+            local weapon_slot = current_weapon:GetSlot()
+            if weapon_slot ~= 1 and weapon_slot ~= 5 then
+                self:PlayMGS4Animation("mgs4_gun_attack", function ()
+                    self:Cqc_reset()
+                end, true)
+                timer.Simple(0.35, function()
+                    local tr_target = self:TraceForTarget()
+                    if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
+                        tr_target:SetNWInt("last_nonlethal_damage_type", 2)
+                        tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
+                        tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 30, 0))
+                    end
+                end)
+                return
+            end
+        end
+
         if self:GetNWBool("is_in_cqc", false) then return end
 
         self:SetNWBool("is_in_cqc", true)
@@ -259,6 +280,7 @@ if SERVER then
                 if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
                     tr_target:SetNWInt("last_nonlethal_damage_type", 2)
                     tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
+                    tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
                     tr_target:SetVelocity(-tr_target:GetVelocity())
                 end
             end, true)
@@ -270,6 +292,7 @@ if SERVER then
                 if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
                     tr_target:SetNWInt("last_nonlethal_damage_type", 2)
                     tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
+                    tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
                     tr_target:SetVelocity(-tr_target:GetVelocity())
                 end
             end, true)
@@ -283,6 +306,7 @@ if SERVER then
                 if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
                     tr_target:SetNWInt("last_nonlethal_damage_type", 0)
                     tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 50, 0))
+                    tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
                     tr_target:KnockedBack(self:GetForward())
                 end
             end)
@@ -408,6 +432,40 @@ if SERVER then
 
                 target:ForcePosition(false)
 
+            end, true)
+        elseif direction == 3 then
+            -- Front with weapon
+            self:SetNWBool("is_in_cqc", true)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation("mgs4_cqc_throw_gun_front", function()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
+
+            target:SetNWInt("last_nonlethal_damage_type", 0)
+            target:SetNWBool("is_in_cqc", true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles() + Angle(0, 180, 0))
+            target:PlayMGS4Animation("mgs4_cqc_throw_gun_front_victim", function()
+                target:Cqc_reset()
+                target:SetNWFloat("psyche", 0)
+                target:ForcePosition(false)
+            end, true)
+        elseif direction == 4 then
+            -- Back with weapon
+            self:SetNWBool("is_in_cqc", true)
+            self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            self:PlayMGS4Animation("mgs4_cqc_throw_gun_back", function()
+                self:Cqc_reset()
+                self:ForcePosition(false)
+            end, true)
+
+            target:SetNWInt("last_nonlethal_damage_type", 0)
+            target:SetNWBool("is_in_cqc", true)
+            target:ForcePosition(true, self:GetPos(), self:EyeAngles())
+            target:PlayMGS4Animation("mgs4_cqc_throw_gun_back_victim", function()
+                target:Cqc_reset()
+                target:SetNWFloat("psyche", 0)
+                target:ForcePosition(false)
             end, true)
         else
             -- Normal throw
@@ -719,21 +777,39 @@ if SERVER then
         local is_in_cqc = self:GetNWBool("is_in_cqc", false)
         local cqc_target = self:TraceForTarget()
         local cqc_level = self:GetNWInt("cqc_level", 1)
+        local large_weapon = false -- Large weapons have a different CQC action and can only throw with EX level CQC
+
+        local current_weapon = self:GetActiveWeapon()
+        if IsValid(current_weapon) then
+            local weapon_slot = current_weapon:GetSlot()
+            if weapon_slot ~= 1 and weapon_slot ~= 5 then
+                large_weapon = true
+            end
+        end
 
         if is_in_cqc or cqc_level < 0 or not cqc_target then return end
 
-        if (self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false)) then
+        if ((self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false))) and not large_weapon then
             self:Cqc_fail()
-        else
+        elseif(IsValid(cqc_target) and cqc_target:Alive() and cqc_target:GetNWFloat("psyche", 100) > 0) then
             local will_grab = self:GetNWBool("will_grab", false)
             local cqc_target_level = cqc_target:GetNWInt("cqc_level", 1)
 
             if self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) and cqc_target_level == 4 and cqc_level < 4 then
                 self:Cqc_counter(cqc_target)
-            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
+            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and will_grab and cqc_level >= 1 and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) and not large_weapon then
                 self:Cqc_grab(cqc_target)
-            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) then
-                self:Cqc_throw(cqc_target)
+            elseif self:IsOnGround() and IsValid(cqc_target) and cqc_target:IsOnGround() and !cqc_target:GetNWBool("is_in_cqc", false) and !cqc_target:GetNWBool("is_knocked_out", false) and (not large_weapon or cqc_level >= 4) then
+                local direction
+                if large_weapon and cqc_level >= 4 then
+                    local angle_around = self:AngleAroundTarget(cqc_target)
+                    if angle_around > 135 and angle_around <= 225 then
+                        direction = 4 -- Backward with weapon
+                    else
+                        direction = 3 -- Forward with weapon
+                    end
+                end
+                self:Cqc_throw(cqc_target, direction)
             end
         end
     end
