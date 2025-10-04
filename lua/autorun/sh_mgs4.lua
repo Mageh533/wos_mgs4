@@ -208,6 +208,8 @@ if SERVER then
 				self:ForcePosition(false)
 			end, true)
 		end
+
+		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
 	function ent:Cqc_reset()
@@ -221,6 +223,7 @@ if SERVER then
 		self:SetNWBool("is_aiming", false)
 		self:SetNWBool("is_knife", false)
 		self:SetNWBool("is_using", false)
+		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
 	-- === CQC Actions ===
@@ -257,7 +260,7 @@ if SERVER then
 				end, true)
 				timer.Simple(0.35, function()
 					local tr_target = self:TraceForTarget()
-					if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
+					if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
 						tr_target:SetNWInt("last_nonlethal_damage_type", 2)
 						tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
 						tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 30, 0))
@@ -278,7 +281,7 @@ if SERVER then
 				self:SetNWInt("cqc_punch_combo", 1)
 				self:Cqc_reset()
 				local tr_target = self:TraceForTarget()
-				if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
+				if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
 					tr_target:SetNWInt("last_nonlethal_damage_type", 2)
 					tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
 					tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
@@ -290,7 +293,7 @@ if SERVER then
 				self:SetNWInt("cqc_punch_combo", 2)
 				self:Cqc_reset()
 				local tr_target = self:TraceForTarget()
-				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) then
+				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
 					tr_target:SetNWInt("last_nonlethal_damage_type", 2)
 					tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 10, 0))
 					tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
@@ -304,7 +307,7 @@ if SERVER then
 				end, true)
 				timer.Simple(0.35, function()
 				local tr_target = self:TraceForTarget()
-				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
+				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
 					tr_target:Cqc_reset()
 					tr_target:SetNWInt("last_nonlethal_damage_type", 0)
 					tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 50, 0))
@@ -788,7 +791,7 @@ if SERVER then
 
 		if is_in_cqc or cqc_level < 0 or not cqc_target then return end
 
-		if ((self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false))) and not large_weapon then
+		if ((self:IsOnGround() and !IsValid(cqc_target)) or (cqc_target:GetNWBool("is_in_cqc", false) or cqc_target:GetNWBool("is_knocked_out", false) or cqc_target:GetNWFloat("cqc_immunity_remaining", 0) > 0)) and not large_weapon then
 			self:Cqc_fail()
 		elseif(IsValid(cqc_target) and cqc_target:Alive() and cqc_target:GetNWFloat("psyche", 100) > 0) then
 			local will_grab = self:GetNWBool("will_grab", false)
@@ -968,6 +971,9 @@ if SERVER then
 		ent:SetNWInt("cqc_punch_combo", 0) -- 1 = First punch, 2 = Second punch, 3 = Kick
 		ent:SetNWBool("helping_up", false)
 
+		--- Immunity to CQC for a few seconds to make it fairer
+		ent:SetNWFloat("cqc_immunity_remaining", 0)
+
 		--- Grab abilities, requires at least CQC level 1
 		ent:SetNWBool("blades3", true)
 		ent:SetNWBool("scanner3", true)
@@ -1009,6 +1015,7 @@ if SERVER then
 		ply:SetNWFloat("cqc_punch_time_left", 0)
 		ply:SetNWInt("cqc_punch_combo", 0)
 		ply:SetNWBool("helping_up", false)
+		ply:SetNWFloat("cqc_immunity_remaining", 0)
 		ply:SetNWBool("blades3", true)
 		ply:SetNWBool("scanner3", true)
 		ply:SetNWFloat("psyche", 100)
@@ -1060,6 +1067,15 @@ if SERVER then
 				entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
 			end
 
+			print(entity:GetNWFloat("cqc_immunity_remaining", 0))
+
+			if entity:GetNWFloat("cqc_immunity_remaining", 0) > 0 then
+				entity:SetNWFloat("cqc_immunity_remaining", entity:GetNWFloat("cqc_immunity_remaining", 0) - FrameTime())
+				if entity:GetNWFloat("cqc_immunity_remaining", 0) < 0 then
+					entity:SetNWFloat("cqc_immunity_remaining", 0)
+				end
+			end
+
 			-- Press it once for Punch
 			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 then
 				entity:SetNWFloat("cqc_button_hold_time", 0)
@@ -1084,7 +1100,7 @@ if SERVER then
 
 			if entity:GetNWFloat("cqc_punch_time_left", 0) > 0 then
 				entity:SetNWFloat("cqc_punch_time_left", math.max(entity:GetNWFloat("cqc_punch_time_left", 0) - FrameTime(), 0))
-				if entity:GetNWFloat("cqc_punch_time_left", 0) == 0 then
+				if entity:GetNWFloat("cqc_punch_time_left", 0) <= 0 then
 					entity:SetNWInt("cqc_punch_combo", 0) -- Reset combo
 				end
 			end
