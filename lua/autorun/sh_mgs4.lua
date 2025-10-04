@@ -735,7 +735,6 @@ if SERVER then
 		-- Decrease the escape progress over time, faster if the player has low CQC level
 		target:SetNWFloat("grab_escape_progress", math.max(target:GetNWFloat("grab_escape_progress", 100) - ((1 / self:GetNWInt("cqc_level", 1)) * FrameTime() * 25), 0))
 
-		print(target:GetNWFloat("grab_escape_progress", 100))
 
 		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
 
@@ -1051,7 +1050,7 @@ if SERVER then
 				KnockoutLoop(entity)
 			end
 
-			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 then
+			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 and entity:OnGround() then
 				entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
 			end
 
