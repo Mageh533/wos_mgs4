@@ -27,24 +27,24 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 		head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
 	end)
 
-timer.Simple(duration, function()
-	if self:Alive() == false then return end
+	timer.Simple(duration, function()
+		if self:Alive() == false then return end
 
-	self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
+		self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
 
-	self:SetEyeAngles(Angle(0, head_angle.y, 0))
+		self:SetEyeAngles(Angle(0, head_angle.y, 0))
 
-	self:SetNWBool("animation_playing", false)
+		self:SetNWBool("animation_playing", false)
 
-	self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+		self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 
-	if callback and type(callback) == "function" then
-            callback(self)
-	end
+		if callback and type(callback) == "function" then
+		    callback(self)
+		end
 
-	self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
+		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
 
-    end)
+	end)
 
 	self:SetNWString('SVAnim', anim)
 	self:SetNWFloat('SVAnimDelay', select(2, self:LookupSequence(anim)))
@@ -251,7 +251,7 @@ if SERVER then
 
 		if IsValid(current_weapon) then
 			local weapon_slot = current_weapon:GetSlot()
-			if weapon_slot ~= 1 and weapon_slot ~= 5 then
+			if weapon_slot ~= 1 then
 				self:PlayMGS4Animation("mgs4_gun_attack", function ()
 					self:Cqc_reset()
 				end, true)
@@ -783,7 +783,7 @@ if SERVER then
 		local current_weapon = self:GetActiveWeapon()
 		if IsValid(current_weapon) then
 			local weapon_slot = current_weapon:GetSlot()
-			if weapon_slot ~= 1 and weapon_slot ~= 5 then
+			if weapon_slot ~= 1 then
 				large_weapon = true
 			end
 		end
@@ -1051,12 +1051,12 @@ if SERVER then
 				KnockoutLoop(entity)
 			end
 
-			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) then
+			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 then
 				entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
 			end
 
 			-- Press it once for Punch
-			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) then
+			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 then
 				entity:SetNWFloat("cqc_button_hold_time", 0)
 				entity:Cqc_punch()
 			end
