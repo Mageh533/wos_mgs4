@@ -305,6 +305,7 @@ if SERVER then
 				timer.Simple(0.35, function()
 				local tr_target = self:TraceForTarget()
 				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("psyche", 100) > 0 then
+					tr_target:Cqc_reset()
 					tr_target:SetNWInt("last_nonlethal_damage_type", 0)
 					tr_target:SetNWFloat("psyche", math.max(tr_target:GetNWFloat("psyche", 100) - 50, 0))
 					tr_target:EmitSound("sfx/hit.wav", 75, 100, 1, CHAN_WEAPON)
@@ -653,6 +654,59 @@ if SERVER then
 		target:PlayMGS4Animation("mgs4_grabbed_move", nil, true)
 	end
 
+	function ent:Cqc_grab_letgo(type, crouched)
+		if not self then return end
+
+		local letgo_anim
+		-- 0 is when letting go and 1 is when being let go
+		if type == 0 then
+			local standed_letgo_anim = "mgs4_grab_letgo"
+			local standed_escaped_anim = "mgs4_grab_escaped"
+			local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
+			local crouched_escaped_anim = "mgs4_grab_crouched_escaped"
+			local target = self:GetNWEntity("cqc_grabbing", Entity(0))
+
+			if crouched then
+				if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+					letgo_anim = crouched_escaped_anim
+				else
+					letgo_anim = crouched_letgo_anim
+				end
+			else
+				if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+					letgo_anim = standed_escaped_anim
+				else
+					letgo_anim = standed_letgo_anim
+				end
+			end
+		elseif type == 1 then
+			local standed_letgo_anim = "mgs4_grabbed_letgo"
+			local standed_escaped_anim = "mgs4_grabbed_escaped"
+			local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
+			local crouched_escaped_anim = "mgs4_grabbed_crouched_escaped"
+
+			if crouched then
+				if self:GetNWFloat("grab_escape_progress", 0) <= 0 then
+					letgo_anim = crouched_escaped_anim
+				else
+					letgo_anim = crouched_letgo_anim
+				end
+			else
+				if self:GetNWFloat("grab_escape_progress", 0) <= 0 then
+					letgo_anim = standed_escaped_anim
+				else
+					letgo_anim = standed_letgo_anim
+				end
+			end
+		end
+
+		self:Cqc_reset()
+		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+		self:PlayMGS4Animation(letgo_anim, function ()
+			self:ForcePosition(false)
+		end, true)
+	end
+
 	-- == Loop sequence to ensure correct positions at all times and handle grabbing actions ==
 	function ent:Cqc_loop()
 		if not self then return end
@@ -664,62 +718,12 @@ if SERVER then
 		if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) or target:GetNWFloat("grab_escape_progress", 0) <= 0 and not self:GetNWBool("animation_playing", false) and not target:GetNWBool("animation_playing", false) then
 			-- Letgo animation on the player
 			if self:Alive() and self:GetNWFloat("psyche", 100) > 0 then
-				local letgo_anim
-
-				local standed_letgo_anim = "mgs4_grab_letgo"
-				local standed_escaped_anim = "mgs4_grab_escaped"
-				local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
-				local crouched_escaped_anim = "mgs4_grab_crouched_escaped"
-
-				if target:GetNWBool("is_grabbed_crouched", false) then
-					if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
-						letgo_anim = crouched_escaped_anim
-					else
-						letgo_anim = crouched_letgo_anim
-					end
-				else
-					if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
-						letgo_anim = standed_escaped_anim
-					else
-						letgo_anim = standed_letgo_anim
-					end
-				end
-
-				self:Cqc_reset()
-				self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-				self:PlayMGS4Animation(letgo_anim, function ()
-					self:ForcePosition(false)
-				end, true)
+				self:Cqc_grab_letgo(0, target:GetNWBool("is_grabbed_crouched", false))
 			end
 
 			-- Letgo animation on the target
 			if target:Alive() and target:GetNWFloat("psyche", 100) > 0 then
-				local letgo_anim
-
-				local standed_letgo_anim = "mgs4_grabbed_letgo"
-				local standed_escaped_anim = "mgs4_grabbed_escaped"
-				local crouched_letgo_anim = "mgs4_grabbed_crouched_letgo"
-				local crouched_escaped_anim = "mgs4_grabbed_crouched_escaped"
-
-				if target:GetNWBool("is_grabbed_crouched", false) then
-					if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
-						letgo_anim = crouched_escaped_anim
-					else
-						letgo_anim = crouched_letgo_anim
-					end
-				else
-					if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
-						letgo_anim = standed_escaped_anim
-					else
-						letgo_anim = standed_letgo_anim
-					end
-				end
-
-				target:Cqc_reset()
-				target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-				target:PlayMGS4Animation(letgo_anim, function ()
-					target:ForcePosition(false)
-				end, true)
+				target:Cqc_grab_letgo(1, target:GetNWBool("is_grabbed_crouched", false))
 			end
 
 			return
@@ -1013,6 +1017,13 @@ if SERVER then
 		ply:SetNWFloat("psyche", 100)
 		ply:SetNWBool("is_knocked_out", false)
 		ply:SetNWInt("last_nonlethal_damage_type", 0)
+	end)
+
+	hook.Add("DoPlayerDeath", "MGS4PlayerPreDeathCleanup", function(ply, attacker, dmg)
+		if ply:GetNWBool("cqc_grabbing", Entity(0)) ~= Entity(0) then
+			local target = ply:GetNWBool("cqc_grabbing", Entity(0))
+			target:Cqc_grab_letgo(1, target:GetNWBool("is_grabbed_crouched", false))
+		end
 	end)
 
 	-- === Non lethal Damage Handling ===
