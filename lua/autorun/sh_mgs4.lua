@@ -331,7 +331,6 @@ if SERVER then
 			self:Cqc_reset()
 		end, true)
 
-		target:SetNWInt("last_nonlethal_damage_type", 1)
 		target:SetNWBool("is_in_cqc", true)
 		target:PlayMGS4Animation(knifed_anim, function()
 			target:SetNWBool("is_in_cqc", false)
@@ -662,7 +661,7 @@ if SERVER then
 		if not IsValid(target) then return end
 
 		-- If target or player dies, gets knocked out or player lets go. Stop the loop
-		if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) or target:GetNWFloat("grab_escape_progress", 0) <= 0 then
+		if not target:Alive() or not self:Alive() or target:GetNWFloat("psyche", 100) <= 0 or self:GetNWFloat("psyche", 100) <= 0 or self:KeyPressed(IN_JUMP) or target:GetNWFloat("grab_escape_progress", 0) <= 0 and not self:GetNWBool("animation_playing", false) and not target:GetNWBool("animation_playing", false) then
 			-- Letgo animation on the player
 			if self:Alive() and self:GetNWFloat("psyche", 100) > 0 then
 				local letgo_anim
@@ -732,9 +731,8 @@ if SERVER then
 		target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
 		target:SetEyeAngles(player_angle)
 
-		-- Decrease the escape progress over time, faster if the player has low CQC level
+		-- Target slowly is able to escape depending on cqc level
 		target:SetNWFloat("grab_escape_progress", math.max(target:GetNWFloat("grab_escape_progress", 100) - ((1 / self:GetNWInt("cqc_level", 1)) * FrameTime() * 25), 0))
-
 
 		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
 
