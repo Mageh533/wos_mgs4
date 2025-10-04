@@ -327,7 +327,6 @@ if SERVER then
 		end
 
 		self:SetNWBool("is_in_cqc", true)
-		self:SetNWEntity("cqc_grabbing", target)
 		self:PlayMGS4Animation(knife_anim, function()
 			self:Cqc_reset()
 		end, true)
@@ -375,7 +374,6 @@ if SERVER then
 		if direction == 1 then
 			-- Throw forward
 			self:SetNWBool("is_in_cqc", true)
-			self:SetNWEntity("cqc_grabbing", target)
 			self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 			self:PlayMGS4Animation("mgs4_grab_throw_forward", function()
 				self:Cqc_reset()
@@ -406,7 +404,6 @@ if SERVER then
 		elseif direction == 2 then
 			-- Throw backward
 			self:SetNWBool("is_in_cqc", true)
-			self:SetNWEntity("cqc_grabbing", target)
 			self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 			self:PlayMGS4Animation("mgs4_grab_throw_backward", function()
 				self:Cqc_reset()
@@ -1375,7 +1372,7 @@ end)
 
 -- === Camera ===
 hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-	local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false)
+	local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
 
 	if is_in_anim == false then return end
 
