@@ -769,8 +769,6 @@ if SERVER then
 				target:SetNWBool("is_choking", false)
 			end
 		end
-
-		target:SetEyeAngles(player_angle) -- Set the target's eye angles to face the player
 	end
 
 	function ent:Cqc_check()
@@ -829,6 +827,14 @@ if SERVER then
 
 		if self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) then
 			target:SetNWFloat("psyche", target:GetNWFloat("psyche", 100) + (GetConVar("mgs4_psyche_recovery_action"):GetFloat() * FrameTime() * 10))
+
+			-- Yup, this happens to return the right timings for sfx
+			local cool_as_cycle_with_tan_for_some_reason = math.Truncate(math.tanh(self:GetCycle()), 2)
+
+			if cool_as_cycle_with_tan_for_some_reason == 0.4 or cool_as_cycle_with_tan_for_some_reason == 0.6 then
+				self:EmitSound("sfx/hit.wav")
+			end
+
 		elseif not self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and self:Crouching() then
 			self:PlayMGS4Animation("mgs4_wakeup_start", function()
 				self:SetNWBool("helping_up", true)
@@ -1067,8 +1073,6 @@ if SERVER then
 				entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
 			end
 
-			print(entity:GetNWFloat("cqc_immunity_remaining", 0))
-
 			if entity:GetNWFloat("cqc_immunity_remaining", 0) > 0 then
 				entity:SetNWFloat("cqc_immunity_remaining", entity:GetNWFloat("cqc_immunity_remaining", 0) - FrameTime())
 				if entity:GetNWFloat("cqc_immunity_remaining", 0) < 0 then
@@ -1125,6 +1129,45 @@ if SERVER then
 		end
 	end)
 else
+	-- === Camera ===
+	hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
+		local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
+
+		if is_in_anim == false then return end
+
+		local function hide_player_head(bool)
+			local bone = ply:LookupBone("ValveBiped.Bip01_Head1")
+			if not bone or bone < 1 then return end
+
+			if bool then
+				ply:ManipulateBoneScale(bone, Vector(0,0,0))
+			else
+				ply:ManipulateBoneScale(bone, Vector(1,1,1))
+			end
+		end
+
+		local thirdperson = GetConVar("mgs4_actions_in_thirdperson"):GetBool()
+
+		hide_player_head(!thirdperson)
+
+		-- position adjust for each
+		local head_pos = ply:GetAttachment(ply:LookupAttachment("eyes")).Pos
+		local head_angle = ply:GetAttachment(ply:LookupAttachment("eyes")).Ang
+
+		local pelvis_bone = ply:LookupBone("ValveBiped.Bip01_Pelvis")
+		local pelvis_pos = pelvis_bone and ply:GetBonePosition(pelvis_bone) or pos
+		pelvis_pos = pelvis_pos + Vector(0, 0, 30) -- Adjust pelvis position slightly up
+
+		local view = {
+			origin = (thirdperson and pelvis_pos or head_pos) - ( angles:Forward() * (thirdperson and 60 or 0) ),
+			angles = (thirdperson and angles or Angle(head_angle.p, head_angle.y, 0)),
+			fov = fov,
+			drawviewer = true
+		}
+
+		return view
+	end )
+
 	surface.CreateFont("MGS4HudNumbers", {
 		font = "Tahoma",
 		size = 72,
@@ -1286,7 +1329,7 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 end)
 
 -- === Animation Handling for players ===
-hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
+hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 	if ply:GetNWBool("is_knocked_out", false) then
 		-- == Knockout loop ==
 		local knockout_type = ply:GetNWInt("last_nonlethal_damage_type", 0)
@@ -1385,42 +1428,4 @@ hook.Add("CalcMainActivity", "!MGS4Anims", function(ply, vel)
 		end
 	end
 end)
-
--- === Camera ===
-hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-	local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
-
-	if is_in_anim == false then return end
-
-	local function hide_player_head(bool)
-		local bone = ply:LookupBone("ValveBiped.Bip01_Head1")
-		if not bone or bone < 1 then return end
-
-		if bool then
-			ply:ManipulateBoneScale(bone, Vector(0,0,0))
-		else
-			ply:ManipulateBoneScale(bone, Vector(1,1,1))
-		end
-	end
-
-	local thirdperson = GetConVar("mgs4_actions_in_thirdperson"):GetBool()
-
-	hide_player_head(!thirdperson)
-
-	-- position adjust for each
-	local head_pos = ply:GetAttachment(ply:LookupAttachment("eyes")).Pos
-	local head_angle = ply:GetAttachment(ply:LookupAttachment("eyes")).Ang
-
-	local pelvis_bone = ply:LookupBone("ValveBiped.Bip01_Pelvis")
-	local pelvis_pos = pelvis_bone and ply:GetBonePosition(pelvis_bone) or pos
-	pelvis_pos = pelvis_pos + Vector(0, 0, 30) -- Adjust pelvis position slightly up
-
-	local view = {
-		origin = (thirdperson and pelvis_pos or head_pos) - ( angles:Forward() * (thirdperson and 60 or 0) ), angles = (thirdperson and angles or Angle(head_angle.p, head_angle.y, 0)),
-		fov = fov,
-		drawviewer = true
-	}
-
-	return view
-end )
 
