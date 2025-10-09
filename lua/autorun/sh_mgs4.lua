@@ -189,6 +189,8 @@ if SERVER then
 			end
 			self:ForcePosition(false)
 		end, true)
+
+		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
 	function ent:GetUp()
@@ -223,7 +225,6 @@ if SERVER then
 		self:SetNWBool("is_aiming", false)
 		self:SetNWBool("is_knife", false)
 		self:SetNWBool("is_using", false)
-		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
 	-- === CQC Actions ===
@@ -401,6 +402,8 @@ if SERVER then
 					target:GetUp()
 				end
 
+				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
+
 				target:ForcePosition(false)
 
 			end, true)
@@ -431,6 +434,8 @@ if SERVER then
 					target:GetUp()
 				end
 
+				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
+
 				target:ForcePosition(false)
 
 			end, true)
@@ -450,6 +455,7 @@ if SERVER then
 				target:Cqc_reset()
 				target:SetNWFloat("psyche", 0)
 				target:ForcePosition(false)
+				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 			end, true)
 		elseif direction == 4 then
 			-- Back with weapon
@@ -467,6 +473,7 @@ if SERVER then
 				target:Cqc_reset()
 				target:SetNWFloat("psyche", 0)
 				target:ForcePosition(false)
+				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 			end, true)
 		else
 			-- Normal throw
@@ -495,6 +502,7 @@ if SERVER then
 					target:GetUp()
 				end
 
+				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 				target:ForcePosition(false)
 			end, true)
 		end
@@ -704,6 +712,7 @@ if SERVER then
 		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 		self:PlayMGS4Animation(letgo_anim, function ()
 			self:ForcePosition(false)
+			self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 		end, true)
 	end
 
@@ -832,7 +841,7 @@ if SERVER then
 			local cool_as_cycle_with_tan_for_some_reason = math.Truncate(math.tanh(self:GetCycle()), 2)
 
 			if cool_as_cycle_with_tan_for_some_reason == 0.4 or cool_as_cycle_with_tan_for_some_reason == 0.6 then
-				self:EmitSound("sfx/hit.wav")
+				self:EmitSound("sfx/hit.wav", 75, 70, 0.2)
 			end
 
 		elseif not self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and self:Crouching() then
