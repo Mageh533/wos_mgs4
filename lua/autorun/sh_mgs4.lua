@@ -19,16 +19,13 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 
 	self:SetVelocity(-self:GetVelocity())
 
-	-- Get the bone positions from before the animation ends
-	timer.Simple(duration - 0.1, function()
+	timer.Simple(duration, function()
+		if self:Alive() == false then return end
+
 		local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
 		pos_to_set = pelvis_matrix:GetTranslation()
 
 		head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
-	end)
-
-	timer.Simple(duration, function()
-		if self:Alive() == false then return end
 
 		self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
 
@@ -140,6 +137,50 @@ if SERVER then
 		end
 	end
 
+	function ent:MGS4StuckCheck()
+		local pos = self:GetPos()
+
+		-- Base the position on the bone since it will match the animation position
+		local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
+		local pelvis_pos = pelvis_matrix:GetTranslation()
+
+		local Maxs = Vector(self:OBBMaxs().X / self:GetModelScale(), self:OBBMaxs().Y / self:GetModelScale(), self:OBBMaxs().Z / self:GetModelScale()) 
+		local Mins = Vector(self:OBBMins().X / self:GetModelScale(), self:OBBMins().Y / self:GetModelScale(), self:OBBMins().Z / self:GetModelScale())
+
+		local tr = util.TraceHull({    
+			start = Vector(pelvis_pos.x, pelvis_pos.y, pos.z),
+			endpos = Vector(pelvis_pos.x, pelvis_pos.y, pos.z),
+			maxs = Maxs,
+			mins = Mins,
+			collisiongroup = COLLISION_GROUP_PLAYER,
+			mask = MASK_PLAYERSOLID,
+			filter = function(ent)
+				if ent:IsScripted() and self:BoundingRadius() - ent:BoundingRadius() > 0 then return end
+				
+				if ent:GetCollisionGroup() ~= 20 and ent ~= self then return true end
+			end
+		})
+
+		if tr.Hit then
+			-- Get the direction based on the last unstuck pos
+			local prev_pos = self:GetNWVector("safe_pos", Vector(0,0,0))
+			local new_pos = Vector(pelvis_pos.x, pelvis_pos.y, pos.z)
+
+			local direction = (new_pos - prev_pos):GetNormalized()
+
+			-- Push the player on the opposite direction if they are stuck
+			if self:GetNWBool("force_position", false) then
+				-- push the forced position
+				self:SetNWVector("forced_position", self:GetNWVector("forced_position") - direction)
+			else
+				-- Push the actual position
+				self:SetPos(pos - direction)
+			end
+		else
+			-- Set the currently known safe pos
+			self:SetNWVector("safe_pos", Vector(pelvis_pos.x, pelvis_pos.y, pos.z))
+		end
+	end
 
 	-- === Knockout ===
 	function ent:Knockout()
@@ -708,6 +749,7 @@ if SERVER then
 			end
 		end
 
+		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 		self:Cqc_reset()
 		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 		self:PlayMGS4Animation(letgo_anim, function ()
@@ -1131,6 +1173,7 @@ if SERVER then
 			end
 
 			if entity:GetNWBool("animation_playing", true) or entity:GetNWBool("is_grabbed", false) then
+				entity:MGS4StuckCheck()
 				entity:Freeze(true)
 			else
 				entity:Freeze(false)
