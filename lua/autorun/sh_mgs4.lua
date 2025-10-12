@@ -14,6 +14,8 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 
 	local current_pos = self:GetPos()
 
+	self:SetNWVector("safe_pos", current_pos)
+
 	local pos_to_set
 	local head_angle
 
