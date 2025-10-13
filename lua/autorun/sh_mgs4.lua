@@ -10,10 +10,9 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 	self:SetNWBool("animation_playing", true)
 	self:SetNWFloat("cqc_button_hold_time", 0)
 
-	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-
 	local current_pos = self:GetPos()
 
+	-- Shouldn't be able to start an anim without being in a safe position
 	self:SetNWVector("safe_pos", current_pos)
 
 	local pos_to_set
@@ -34,8 +33,6 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 		self:SetEyeAngles(Angle(0, head_angle.y, 0))
 
 		self:SetNWBool("animation_playing", false)
-
-		self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 
 		if callback and type(callback) == "function" then
 		    callback(self)
@@ -149,7 +146,7 @@ if SERVER then
 		local Maxs = Vector(self:OBBMaxs().X / self:GetModelScale(), self:OBBMaxs().Y / self:GetModelScale(), self:OBBMaxs().Z / self:GetModelScale()) 
 		local Mins = Vector(self:OBBMins().X / self:GetModelScale(), self:OBBMins().Y / self:GetModelScale(), self:OBBMins().Z / self:GetModelScale())
 
-		local tr = util.TraceHull({    
+		local tr = util.TraceHull({
 			start = Vector(pelvis_pos.x, pelvis_pos.y, pos.z),
 			endpos = Vector(pelvis_pos.x, pelvis_pos.y, pos.z),
 			maxs = Maxs,
@@ -158,12 +155,15 @@ if SERVER then
 			mask = MASK_PLAYERSOLID,
 			filter = function(ent)
 				if ent:IsScripted() and self:BoundingRadius() - ent:BoundingRadius() > 0 then return end
-				
+
 				if ent:GetCollisionGroup() ~= 20 and ent ~= self then return true end
 			end
 		})
 
 		if tr.Hit then
+			-- Additional timer to keep checking post anim until the player stops colliding
+			self:SetNWFloat("stuck_check", 1.0)
+
 			-- Get the direction based on the last unstuck pos
 			local prev_pos = self:GetNWVector("safe_pos", Vector(0,0,0))
 			local new_pos = Vector(pelvis_pos.x, pelvis_pos.y, pos.z)
@@ -612,13 +612,15 @@ if SERVER then
 		-- Find out if grabbing from front or back
 		local angleAround = self:AngleAroundTarget(target)
 
+		local grab_anim
+		local grabbed_anim
+		local angle_offset = Angle(0,0,0)
+
 		if angleAround > 135 and angleAround <= 225 then
 			-- Grabbing from back
-			local grab_anim
-			local grabbed_anim
-
 			local grab_standing_anim = "mgs4_grab_behind"
 			local grabbed_standing_anim = "mgs4_grabbed_behind"
+
 			local grab_crouched_anim = "mgs4_grab_crouched_behind"
 			local grabbed_crouched_anim = "mgs4_grabbed_crouched_behind"
 
@@ -629,22 +631,8 @@ if SERVER then
 				grab_anim = grab_standing_anim
 				grabbed_anim = grabbed_standing_anim
 			end
-
-			self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-			self:PlayMGS4Animation(grab_anim, function ()
-				self:SetNWEntity("cqc_grabbing", target)
-				self:ForcePosition(false)
-			end, true)
-			target:ForcePosition(true, self:GetPos(), self:EyeAngles())
-			target:PlayMGS4Animation(grabbed_anim, function ()
-				target:SetNWBool("is_grabbed", true)
-				target:ForcePosition(false)
-			end, true)
 		else
 			-- Grabbing from front
-			local grab_anim
-			local grabbed_anim
-
 			local grab_standing_anim = "mgs4_grab_front"
 			local grabbed_standing_anim = "mgs4_grabbed_front"
 
@@ -659,18 +647,21 @@ if SERVER then
 				grabbed_anim = grabbed_standing_anim
 			end
 
-
-			self:ForcePosition(true, self:GetPos(), self:EyeAngles())
-			self:PlayMGS4Animation(grab_anim, function ()
-				self:SetNWEntity("cqc_grabbing", target)
-				self:ForcePosition(false)
-			end, true)
-			target:ForcePosition(true, self:GetPos(), self:EyeAngles() + Angle(0, 180, 0))
-			target:PlayMGS4Animation(grabbed_anim, function()
-				target:SetNWBool("is_grabbed", true)
-				target:ForcePosition(false)
-			end, true)
+			angle_offset = Angle(0,180,0)
 		end
+
+		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
+		self:PlayMGS4Animation(grab_anim, function ()
+			self:SetNWEntity("cqc_grabbing", target)
+			self:ForcePosition(false)
+			self:SetNWFloat("stuck_check", 0)
+		end, true)
+		target:ForcePosition(true, self:GetPos(), self:EyeAngles() + angle_offset)
+		target:PlayMGS4Animation(grabbed_anim, function ()
+			target:SetNWBool("is_grabbed", true)
+			target:ForcePosition(false)
+			target:SetNWFloat("stuck_check", 0)
+		end, true)
 
 		if self:Crouching() then
 			target:SetNWBool("is_grabbed_crouched", true)
@@ -958,7 +949,6 @@ if SERVER then
 			entity:GetUp()
 		else
 			entity:SetNWBool("animation_playing", true)
-			entity:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 			entity:SetVelocity(-entity:GetVelocity())
 
 			local psyche = entity:GetNWFloat("psyche", 100)
@@ -1174,11 +1164,22 @@ if SERVER then
 				entity:Cqc_loop()
 			end
 
-			if entity:GetNWBool("animation_playing", true) or entity:GetNWBool("is_grabbed", false) then
-				entity:MGS4StuckCheck()
+			if entity:GetNWBool("animation_playing", true) then
 				entity:Freeze(true)
+				entity:SetNWFloat("stuck_check", 1.0)
 			else
 				entity:Freeze(false)
+			end
+
+			print(entity:GetNWFloat("stuck_check"))
+
+			if entity:GetNWFloat("stuck_check") > 0 then
+				entity:MGS4StuckCheck()
+				entity:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+
+				entity:SetNWFloat("stuck_check", entity:GetNWFloat("stuck_check", 0) - FrameTime())
+			elseif not entity:GetNWBool("is_knocked_out", true) then
+				entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 			end
 		end
 	end)
