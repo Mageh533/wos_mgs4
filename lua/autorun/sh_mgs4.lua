@@ -1218,7 +1218,20 @@ else
 		
 		-- Calculate camera position by rotating around the origin
 		local camera_pos
+
 		if thirdperson then
+			-- Trace from origin to desired camera position to check for collisions
+			local trace = util.TraceLine({
+				start = origin,
+				endpos = origin - (mouse_angles:Forward() * camera_distance),
+				filter = ply
+			})
+			
+			-- If we hit something, position camera at the hit point
+			if trace.Hit then
+				camera_distance = trace.Fraction * camera_distance
+			end
+
 			local forward = mouse_angles:Forward()
 			camera_pos = origin - (forward * camera_distance)
 		else
@@ -1407,6 +1420,8 @@ end)
 
 -- === Animation Handling for players ===
 hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
+	if IsValid(ply) == false or not ply:IsPlayer() then return end
+
 	if ply:GetNWBool("is_knocked_out", false) then
 		-- == Knockout loop ==
 		local knockout_type = ply:GetNWInt("last_nonlethal_damage_type", 0)
@@ -1424,6 +1439,10 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 		return -1, knockout_anim
 	elseif ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("animation_playing", false) then
 		-- == CQC grab loop ==
+		local target = ply:GetNWEntity("cqc_grabbing", Entity(0))
+		
+		if not IsValid(target) or not target:IsPlayer() then return end
+		
 		local grabbing_anim
 
 		local grabbing_loop = ply:LookupSequence("mgs4_grab_loop")
@@ -1433,8 +1452,6 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 		local grabbing_crouched_loop = ply:LookupSequence("mgs4_grab_crouched_loop")
 		local grabbing_crouched_aim = ply:LookupSequence("mgs4_grab_crouched_aim")
 		local grabbing_crouched_chocking = ply:LookupSequence("mgs4_grab_crouched_chocking")
-
-		local target = ply:GetNWEntity("cqc_grabbing", Entity(0))
 
 		if target:GetNWBool("is_choking", false) then
 			if target:GetNWBool("is_grabbed_crouched", false) then
