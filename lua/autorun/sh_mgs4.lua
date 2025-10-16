@@ -137,6 +137,8 @@ if SERVER then
 	end
 
 	function ent:MGS4StuckCheck()
+		if not self then return end
+		
 		local pos = self:GetPos()
 
 		-- Base the position on the bone since it will match the animation position
@@ -1158,6 +1160,7 @@ if SERVER then
 
 				entity:SetPos(pos)
 				entity:SetEyeAngles(ang)
+				entity:SetAngles(ang)
 			end
 
 			if entity:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) then
@@ -1170,8 +1173,6 @@ if SERVER then
 			else
 				entity:Freeze(false)
 			end
-
-			print(entity:GetNWFloat("stuck_check"))
 
 			if entity:GetNWFloat("stuck_check") > 0 then
 				entity:MGS4StuckCheck()
@@ -1193,7 +1194,6 @@ else
 		local function hide_player_head(bool)
 			local bone = ply:LookupBone("ValveBiped.Bip01_Head1")
 			if not bone or bone < 1 then return end
-
 			if bool then
 				ply:ManipulateBoneScale(bone, Vector(0,0,0))
 			else
@@ -1211,11 +1211,23 @@ else
 
 		local pelvis_bone = ply:LookupBone("ValveBiped.Bip01_Pelvis")
 		local pelvis_pos = pelvis_bone and ply:GetBonePosition(pelvis_bone) or pos
-		pelvis_pos = pelvis_pos + Vector(0, 0, 30) -- Adjust pelvis position slightly up
+		local origin = pelvis_pos + Vector(0, 0, 30) -- Origin point for camera rotation
+
+		local mouse_angles = ply:GetNWAngle("mouse_angle", Angle(0,0,0))
+		local camera_distance = thirdperson and 60 or 0
+		
+		-- Calculate camera position by rotating around the origin
+		local camera_pos
+		if thirdperson then
+			local forward = mouse_angles:Forward()
+			camera_pos = origin - (forward * camera_distance)
+		else
+			camera_pos = head_pos
+		end
 
 		local view = {
-			origin = (thirdperson and pelvis_pos or head_pos) - ( angles:Forward() * (thirdperson and 60 or 0) ),
-			angles = (thirdperson and angles or Angle(head_angle.p, head_angle.y, 0)),
+			origin = camera_pos,
+			angles = (thirdperson and mouse_angles or Angle(head_angle.p, head_angle.y, 0)),
 			fov = fov,
 			drawviewer = true
 		}
@@ -1305,8 +1317,15 @@ else
 	end)
 
 	-- === Freeze mouse when helping up ===
-	hook.Add( "InputMouseApply", "FreezeTurning", function( cmd )
+	hook.Add( "InputMouseApply", "FreezeTurning", function( cmd, x, y, ang )
 		local ply = LocalPlayer()
+
+		-- Store mouse movement for camera movement when frozen
+		if ply:GetNWBool("animation_playing", false) then
+			ply:SetNWAngle("mouse_angle", ply:GetNWAngle("mouse_angle", Angle(0,0,0)) + Angle(y * 0.022, -x * 0.022, 0))
+		else
+			ply:SetNWAngle("mouse_angle", ply:EyeAngles())
+		end
 
 		if ply:GetNWBool("helping_up", false) then
 			cmd:SetMouseX( 0 )
