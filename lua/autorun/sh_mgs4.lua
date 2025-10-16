@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-field
 local ent = FindMetaTable("Entity")
 
-function ent:PlayMGS4Animation(anim, callback, autostop)
+function ent:PlayMGS4Animation(anim, callback, updatepos)
 	if not self then return end
 
 	local current_anim = self:LookupSequence(anim)
@@ -28,7 +28,9 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 
 		head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
 
-		self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
+		if updatepos then
+			self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
+		end
 
 		self:SetEyeAngles(Angle(0, head_angle.y, 0))
 
@@ -47,18 +49,17 @@ function ent:PlayMGS4Animation(anim, callback, autostop)
 	self:SetNWFloat('SVAnimStartTime', CurTime())
 	self:EmitMGS4Sound(anim)
 	self:SetCycle(0)
-	if autostop then
-		local delay = select(2, self:LookupSequence(anim))
-		timer.Simple(delay, function()
-			if !IsValid(self) then return end
+	
+	local delay = select(2, self:LookupSequence(anim))
+	timer.Simple(delay, function()
+		if !IsValid(self) then return end
 
-			local anim2 = self:GetNWString('SVAnim')
+		local anim2 = self:GetNWString('SVAnim')
 
-			if anim == anim2 then
-				self:SetNWString('SVAnim', "")
-			end
-		end)
-	end
+		if anim == anim2 then
+			self:SetNWString('SVAnim', "")
+		end
+	end)
 end
 
 -- === Helper to trace a box in front of an entity ===
@@ -885,7 +886,7 @@ if SERVER then
 			self:PlayMGS4Animation("mgs4_wakeup_start", function()
 				self:SetNWBool("helping_up", true)
 				self:SetCycle(0)
-			end, true)
+			end, false)
 		elseif self:GetNWBool("helping_up", false) and not target:GetNWBool("is_knocked_out", false) then
 			self:SetNWBool("is_using", false)
 		end
@@ -1144,7 +1145,7 @@ if SERVER then
 			elseif not entity:GetNWBool("is_using", false) and entity:GetNWBool("helping_up", false) and not entity:GetNWBool("animation_playing", false) then
 				entity:PlayMGS4Animation("mgs4_wakeup_end", function()
 					entity:SetNWBool("helping_up", false)
-				end, true)
+				end, false)
 			end
 
 			if entity:GetNWFloat("cqc_punch_time_left", 0) > 0 then
@@ -1207,7 +1208,6 @@ else
 
 		-- position adjust for each
 		local head_pos = ply:GetAttachment(ply:LookupAttachment("eyes")).Pos
-		local head_angle = ply:GetAttachment(ply:LookupAttachment("eyes")).Ang
 
 		local pelvis_bone = ply:LookupBone("ValveBiped.Bip01_Pelvis")
 		local pelvis_pos = pelvis_bone and ply:GetBonePosition(pelvis_bone) or pos
@@ -1227,7 +1227,7 @@ else
 
 		local view = {
 			origin = camera_pos,
-			angles = (thirdperson and mouse_angles or Angle(head_angle.p, head_angle.y, 0)),
+			angles = (thirdperson and mouse_angles or mouse_angles),
 			fov = fov,
 			drawviewer = true
 		}
@@ -1321,17 +1321,13 @@ else
 		local ply = LocalPlayer()
 
 		-- Store mouse movement for camera movement when frozen
-		if ply:GetNWBool("animation_playing", false) then
+		if ply:GetNWBool("animation_playing", false) or ply:GetNWBool("is_grabbed", false) or ply:GetNWBool("helping_up", false) then
 			ply:SetNWAngle("mouse_angle", ply:GetNWAngle("mouse_angle", Angle(0,0,0)) + Angle(y * 0.022, -x * 0.022, 0))
-		else
-			ply:SetNWAngle("mouse_angle", ply:EyeAngles())
-		end
-
-		if ply:GetNWBool("helping_up", false) then
 			cmd:SetMouseX( 0 )
 			cmd:SetMouseY( 0 )
-
 			return true
+		else
+			ply:SetNWAngle("mouse_angle", ply:EyeAngles())
 		end
 
 	end )
