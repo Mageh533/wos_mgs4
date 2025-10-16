@@ -49,7 +49,7 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 	self:SetNWFloat('SVAnimStartTime', CurTime())
 	self:EmitMGS4Sound(anim)
 	self:SetCycle(0)
-	
+
 	local delay = select(2, self:LookupSequence(anim))
 	timer.Simple(delay, function()
 		if !IsValid(self) then return end
@@ -1391,6 +1391,13 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 		cmd:RemoveKey(IN_MOVELEFT)
 		cmd:RemoveKey(IN_MOVERIGHT)
 		cmd:RemoveKey(IN_DUCK)
+	elseif ply:GetNWBool("is_grabbed", false) then
+		cmd:ClearMovement()
+		cmd:RemoveKey(IN_JUMP)
+		cmd:RemoveKey(IN_DUCK)
+		cmd:RemoveKey(IN_ATTACK)
+		cmd:RemoveKey(IN_ATTACK2)
+		cmd:RemoveKey(IN_RELOAD)
 	elseif ply:GetNWBool("helping_up", false) then
 		cmd:ClearMovement()
 		cmd:RemoveKey(IN_JUMP)
