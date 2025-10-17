@@ -1335,7 +1335,29 @@ else
 
 		-- Store mouse movement for camera movement when frozen
 		if ply:GetNWBool("animation_playing", false) or ply:GetNWBool("is_grabbed", false) or ply:GetNWBool("helping_up", false) then
-			ply:SetNWAngle("mouse_angle", ply:GetNWAngle("mouse_angle", Angle(0,0,0)) + Angle(y * 0.022, -x * 0.022, 0))
+			local prev = ply:GetNWAngle("mouse_angle", ply:EyeAngles())
+			local ang = prev + Angle(y * 0.022, -x * 0.022, 0)
+
+			-- Use head attachment angle if available so clamps are relative to head direction
+			local eyeAttachIdx = ply:LookupAttachment("eyes")
+			local eyeAttach = eyeAttachIdx and ply:GetAttachment(eyeAttachIdx)
+			local baseAng = eyeAttach and eyeAttach.Ang or ply:EyeAngles()
+
+			-- Clamp pitch relative to head pitch to avoid looking too far up/down
+			local minPitchDiff, maxPitchDiff = -60, 60
+			local pitchDiff = math.NormalizeAngle(ang.p - baseAng.p)
+			if pitchDiff < minPitchDiff then pitchDiff = minPitchDiff end
+			if pitchDiff > maxPitchDiff then pitchDiff = maxPitchDiff end
+			ang.p = baseAng.p + pitchDiff
+
+			-- Clamp yaw relative to head yaw so player can't look behind (limit to +/- 90° from head forward)
+			local diff = math.NormalizeAngle(ang.y - baseAng.y)
+			local maxYawDiff = 90
+			if diff > maxYawDiff then diff = maxYawDiff end
+			if diff < -maxYawDiff then diff = -maxYawDiff end
+			ang.y = baseAng.y + diff
+			
+			ply:SetNWAngle("mouse_angle", ang)
 			cmd:SetMouseX( 0 )
 			cmd:SetMouseY( 0 )
 			return true

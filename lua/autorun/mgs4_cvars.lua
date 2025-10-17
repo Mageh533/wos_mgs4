@@ -32,4 +32,5 @@ CreateClientConVar(
 	true,
 	"This is the BUTTON_CODE which handles the CQC button. If you don't know what this means, just use the mgs4_config command to set your button there."
 )
-CreateClientConVar("mgs4_actions_in_thirdperson", "0", true, false, "Show actions in third-person view.", 0, 1)
+
+CreateClientConVar("mgs4_actions_in_thirdperson", "1", true, false, "Show actions in third-person view.", 0, 1)
