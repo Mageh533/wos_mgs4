@@ -1338,29 +1338,34 @@ else
 		if ply:GetNWBool("animation_playing", false) or ply:GetNWBool("is_grabbed", false) or ply:GetNWBool("helping_up", false) then
 			local prev = ply:GetNWAngle("mouse_angle", ply:EyeAngles())
 			local ang = prev + Angle(y * 0.022, -x * 0.022, 0)
+			local thirdperson = GetConVar("mgs4_actions_in_thirdperson"):GetBool()
+			local eyeAngles = ply:EyeAngles()
 
 			-- Use head attachment angle if available so clamps are relative to head direction
 			local eyeAttachIdx = ply:LookupAttachment("eyes")
 			local eyeAttach = eyeAttachIdx and ply:GetAttachment(eyeAttachIdx)
-			local baseAng = eyeAttach and eyeAttach.Ang or ply:EyeAngles()
+			local baseAng = (eyeAttach and not thirdperson) and Angle(0, eyeAttach.Ang.y, 0) or Angle(0, eyeAngles.y, 0)
 
 			-- Clamp pitch relative to head pitch to avoid looking too far up/down
-			local minPitchDiff, maxPitchDiff = -60, 60
+			local minPitchDiff, maxPitchDiff = -90, 90
 			local pitchDiff = math.NormalizeAngle(ang.p - baseAng.p)
 			if pitchDiff < minPitchDiff then pitchDiff = minPitchDiff end
 			if pitchDiff > maxPitchDiff then pitchDiff = maxPitchDiff end
 			ang.p = baseAng.p + pitchDiff
 
-			-- Clamp yaw relative to head yaw so player can't look behind (limit to +/- 90° from head forward)
-			local diff = math.NormalizeAngle(ang.y - baseAng.y)
-			local maxYawDiff = 90
-			if diff > maxYawDiff then diff = maxYawDiff end
-			if diff < -maxYawDiff then diff = -maxYawDiff end
-			ang.y = baseAng.y + diff
-			
+			if not thirdperson then
+				-- Clamp yaw relative to head yaw so player can't look behind (limit to +/- 90° from head forward)
+				local diff = math.NormalizeAngle(ang.y - baseAng.y)
+				local maxYawDiff = 90
+				if diff > maxYawDiff then diff = maxYawDiff end
+				if diff < -maxYawDiff then diff = -maxYawDiff end
+				ang.y = baseAng.y + diff
+			end
+
 			ply:SetNWAngle("mouse_angle", ang)
 			cmd:SetMouseX( 0 )
 			cmd:SetMouseY( 0 )
+
 			return true
 		else
 			ply:SetNWAngle("mouse_angle", ply:EyeAngles())
