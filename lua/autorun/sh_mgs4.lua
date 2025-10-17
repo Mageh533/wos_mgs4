@@ -1224,6 +1224,7 @@ else
 			local trace = util.TraceLine({
 				start = origin,
 				endpos = origin - (mouse_angles:Forward() * camera_distance),
+				mask = MASK_SOLID_BRUSHONLY,
 				filter = ply
 			})
 			
