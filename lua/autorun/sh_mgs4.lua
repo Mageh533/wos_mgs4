@@ -527,6 +527,7 @@ if SERVER then
 			self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 			self:PlayMGS4Animation("mgs4_cqc_throw", function()
 				self:Cqc_reset()
+				self:SetEyeAngles(self:EyeAngles() + Angle(0, 90, 0))
 				self:ForcePosition(false)
 			end, true)
 
@@ -1085,6 +1086,11 @@ if SERVER then
 	-- === Non lethal Damage Handling ===
 	hook.Add("EntityTakeDamage", "MGS4EntityTakeDamage", function(ent, dmginfo)
 		if not IsValid(ent) then return end
+
+		if dmginfo:GetAttacker():GetNWEntity("cqc_grabbing", Entity(0)) == ent then
+			-- Prevent damage from the grabber while being grabbed
+			return true
+		end
 
 		-- Check if the entity is a player or NPC
 		if ent:IsPlayer() or ent:IsNPC() then
