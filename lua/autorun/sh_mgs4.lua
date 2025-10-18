@@ -35,8 +35,6 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 		    callback(self)
 		end
 
-		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
-
 	end)
 
 	self:SetNWString('SVAnim', anim)
@@ -379,6 +377,9 @@ if SERVER then
 		self:SetNWBool("is_in_cqc", true)
 		self:PlayMGS4Animation(knife_anim, function()
 			self:Cqc_reset()
+			self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
+			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
+			self:SetCurrentViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 		end, true)
 
 		target:SetNWBool("is_in_cqc", true)
@@ -751,6 +752,9 @@ if SERVER then
 		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
 		self:PlayMGS4Animation(letgo_anim, function ()
 			self:ForcePosition(false)
+			self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
+			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
+			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 			self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 		end, true)
 	end
@@ -787,6 +791,12 @@ if SERVER then
 		target:SetNWFloat("grab_escape_progress", math.max(target:GetNWFloat("grab_escape_progress", 100) - ((1 / self:GetNWInt("cqc_level", 1)) * FrameTime() * 25), 0))
 
 		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
+
+		if target:GetNWBool("is_grabbed_crouched", false) then
+			self:SetViewOffset(Vector(0, 0, 36)) -- Set crouch view offset
+		else
+			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset
+		end
 
 		if not self:GetNWBool("is_aiming", false) then
 			-- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
