@@ -16,7 +16,6 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 	self:SetNWVector("safe_pos", current_pos)
 
 	local pos_to_set
-	local head_angle
 
 	self:SetVelocity(-self:GetVelocity())
 
@@ -26,13 +25,9 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 		local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
 		pos_to_set = pelvis_matrix:GetTranslation()
 
-		head_angle = self:GetAttachment(self:LookupAttachment("eyes")).Ang
-
 		if updatepos then
 			self:SetPos(Vector(pos_to_set.x, pos_to_set.y, current_pos.z))
 		end
-
-		self:SetEyeAngles(Angle(0, head_angle.y, 0))
 
 		self:SetNWBool("animation_playing", false)
 
@@ -121,17 +116,10 @@ if SERVER then
 
 		if force then
 			self:SetNWBool("force_position", true)
-			if pos then
-				self:SetNWVector("forced_position", pos)
-			else
-				self:SetNWVector("forced_position", self:GetPos())
-			end
 
-			if ang then
-				self:SetNWAngle("forced_angle", ang)
-			else
-				self:SetNWAngle("forced_angle", Angle(0, self:EyeAngles().y, 0))
-			end
+			self:SetNWVector("forced_position", pos and pos or self:GetPos())
+
+			self:SetNWAngle("forced_angle", ang and ang or Angle(0, self:EyeAngles().y, 0))
 		else
 			self:SetNWBool("force_position", false)
 		end
@@ -277,14 +265,18 @@ if SERVER then
 	function ent:Cqc_fail()
 		if not self then return end
 
+		self:ForcePosition(true)
+
 		local crouched = self:Crouching()
 		if crouched then
 			self:PlayMGS4Animation("mgs4_cqc_fail_crouched", function ()
 				self:SetNWBool("is_in_cqc", false)
+				self:ForcePosition(false)
 			end, true)
 		else
 			self:PlayMGS4Animation("mgs4_cqc_fail", function ()
 				self:SetNWBool("is_in_cqc", false)
+				self:ForcePosition(false)
 			end, true)
 		end
 
@@ -302,8 +294,10 @@ if SERVER then
 		if IsValid(current_weapon) then
 			local weapon_slot = current_weapon:GetSlot()
 			if weapon_slot ~= 1 then
+				self:ForcePosition(true)
 				self:PlayMGS4Animation("mgs4_gun_attack", function ()
 					self:Cqc_reset()
+					self:ForcePosition(false)
 				end, true)
 				timer.Simple(0.35, function()
 					local tr_target = self:TraceForTarget()
@@ -324,8 +318,10 @@ if SERVER then
 		local combo_count = self:GetNWInt("cqc_punch_combo", 0)
 
 		if combo_count == 0 then
+			self:ForcePosition(true)
 			self:PlayMGS4Animation("mgs4_punch", function ()
 				self:SetNWInt("cqc_punch_combo", 1)
+				self:ForcePosition(false)
 				self:Cqc_reset()
 				local tr_target = self:TraceForTarget()
 				if tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
@@ -336,8 +332,10 @@ if SERVER then
 				end
 			end, true)
 		elseif combo_count == 1 then
+			self:ForcePosition(true)
 			self:PlayMGS4Animation("mgs4_punch_punch", function ()
 				self:SetNWInt("cqc_punch_combo", 2)
+				self:ForcePosition(false)
 				self:Cqc_reset()
 				local tr_target = self:TraceForTarget()
 				if  tr_target and IsValid(tr_target) and !tr_target:GetNWBool("is_knocked_out", false) and tr_target:GetNWFloat("cqc_immunity_remaining", 0) <= 0 then
@@ -348,8 +346,10 @@ if SERVER then
 				end
 			end, true)
 		elseif combo_count == 2 then
+			self:ForcePosition(true)
 			self:PlayMGS4Animation("mgs4_kick", function ()
 				self:SetNWInt("cqc_punch_combo", 0)
+				self:ForcePosition(false)
 				self:Cqc_reset()
 				end, true)
 				timer.Simple(0.35, function()
@@ -1151,7 +1151,7 @@ if SERVER then
 			if entity:GetNWFloat("cqc_punch_time_left", 0) > 0 then
 				entity:SetNWFloat("cqc_punch_time_left", math.max(entity:GetNWFloat("cqc_punch_time_left", 0) - FrameTime(), 0))
 				if entity:GetNWFloat("cqc_punch_time_left", 0) <= 0 then
-					entity:SetNWInt("cqc_punch_combo", 0) -- Reset combo
+					entity:SetNWInt("cqc_punch_combo", 0) -- Reset comboS
 				end
 			end
 
@@ -1160,8 +1160,12 @@ if SERVER then
 				local ang = entity:GetNWAngle("forced_angle", Angle(0, 0, 0))
 
 				entity:SetPos(pos)
-				entity:SetEyeAngles(ang)
-				entity:SetAngles(ang)
+
+				if entity:IsPlayer() then
+					entity:SetEyeAngles(ang)
+				else
+					entity:SetAngles(ang)
+				end
 			end
 
 			if entity:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) then
@@ -1171,6 +1175,11 @@ if SERVER then
 			if entity:GetNWBool("animation_playing", true) then
 				entity:Freeze(true)
 				entity:SetNWFloat("stuck_check", 1.0)
+				if entity:GetAngles().y ~= entity:EyeAngles().y then
+					-- If they are a player we need to ensure the body is rotated to the eyeangles (only viable way i found is adding some dummy velocity)
+					local dir = entity:EyeAngles():Forward()
+					entity:SetVelocity(dir * 10)
+				end 
 			else
 				entity:Freeze(false)
 			end
