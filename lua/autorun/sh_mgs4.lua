@@ -286,7 +286,7 @@ if SERVER then
 	function ent:Cqc_punch()
 		if not self then return end
 
-		self:SetNWFloat("cqc_punch_time_left", 0.5) -- Time to extend the punch combo
+		self:SetNWFloat("cqc_punch_time_left", 0.8) -- Time to extend the punch combo
 
 		-- Players cannot punch with 2 handed weapons
 		local current_weapon = self:GetActiveWeapon()
@@ -1150,9 +1150,8 @@ if SERVER then
 
 			if entity:GetNWFloat("cqc_punch_time_left", 0) > 0 then
 				entity:SetNWFloat("cqc_punch_time_left", math.max(entity:GetNWFloat("cqc_punch_time_left", 0) - FrameTime(), 0))
-				if entity:GetNWFloat("cqc_punch_time_left", 0) <= 0 then
-					entity:SetNWInt("cqc_punch_combo", 0) -- Reset comboS
-				end
+			else
+				entity:SetNWInt("cqc_punch_combo", 0) -- Reset combo
 			end
 
 			if entity:GetNWBool("force_position", false) then
