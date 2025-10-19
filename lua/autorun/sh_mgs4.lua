@@ -811,10 +811,10 @@ if SERVER then
 			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
 				-- Holding and moving backward throws the target behind
 				self:Cqc_throw(target, 2)
-			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("blades3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
 				-- press e while holding does the throat cut
 				self:Cqc_throat_cut(target)
-			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWBool("scanner3", false) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
 				-- press e while not holding does the scan
 				self:Cqc_sop_scan(target)
 			elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
@@ -1014,15 +1014,24 @@ if SERVER then
 		ent:SetNWVector("forced_position", Vector(0, 0, 0))
 		ent:SetNWAngle("forced_angle", Angle(0, 0, 0))
 
-		--- Each CQC Level grants you:
-		--- -2 = Nothing
-		--- -1 = Punch punch kick combo
-		---  0 = CQC throw
-		---  1 = (CQC+1) Grabs
-		---  2 = (CQC+2) Higher stun damage
-		---  3 = (CQC+3) Higher stun damage and take weapons from enemies
-		---  4 = (CQCEX) Counter CQC and maximum stun damage
+		--- == Skills ==
+
+		-- Each CQC Level grants you:
+		-- -2 = Nothing
+		-- -1 = Punch punch kick combo
+		--  0 = CQC throw
+		--  1 = (CQC+1) Grabs
+		--  2 = (CQC+2) Higher stun damage
+		--  3 = (CQC+3) Higher stun damage and take weapons from enemies
+		--  4 = (CQCEX) Counter CQC and maximum stun damage
 		ent:SetNWInt("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+
+		-- Other skills
+		ent:SetNWInt("blades", 3)
+		ent:SetNWInt("scanner", 3)
+
+		-- Visually show knife in right hand when they have the blades skill
+		ent:SetNWEntity("knife", Entity(0))
 
 		-- How long the player is holding the CQC button for (for knowing if they want to grab or punch)
 		ent:SetNWBool("cqc_button_held", false)
@@ -1036,10 +1045,6 @@ if SERVER then
 
 		--- Immunity to CQC for a few seconds to make it fairer
 		ent:SetNWFloat("cqc_immunity_remaining", 0)
-
-		--- Grab abilities, requires at least CQC level 1
-		ent:SetNWBool("blades3", true)
-		ent:SetNWBool("scanner3", true)
 
 		--- Psyche
 		--- If it reaches 0, the entity will be knocked out
@@ -1073,14 +1078,15 @@ if SERVER then
 		ply:SetNWVector("forced_position", Vector(0, 0, 0))
 		ply:SetNWAngle("forced_angle", Angle(0, 0, 0))
 		ply:SetNWInt("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
+		ply:SetNWInt("blades", 0)
+		ply:SetNWInt("scanner", 0)
+		ply:SetNWEntity("knife", Entity(0))
 		ply:SetNWBool("cqc_button_held", false)
 		ply:SetNWFloat("cqc_button_hold_time", 0)
 		ply:SetNWFloat("cqc_punch_time_left", 0)
 		ply:SetNWInt("cqc_punch_combo", 0)
 		ply:SetNWBool("helping_up", false)
 		ply:SetNWFloat("cqc_immunity_remaining", 0)
-		ply:SetNWBool("blades3", true)
-		ply:SetNWBool("scanner3", true)
 		ply:SetNWFloat("psyche", 100)
 		ply:SetNWBool("is_knocked_out", false)
 		ply:SetNWInt("last_nonlethal_damage_type", 0)
@@ -1297,8 +1303,8 @@ else
 		-- Player skills hud (always present regardless of gamemode)
 
 		local cqc_level = ply:GetNWInt("cqc_level", 0)
-		local blades3 = ply:GetNWBool("blades3", false)
-		local scanner3 = ply:GetNWBool("scanner3", false)
+		local blades = ply:GetNWInt("blades", 0)
+		local scanner = ply:GetNWInt("scanner", 0)
 
 		local hud_items = {}
 
@@ -1310,12 +1316,12 @@ else
 			end
 		end
 
-		if blades3 then
-			table.insert(hud_items, { label = "BLADES", value = 3 })
+		if blades > 0 then
+			table.insert(hud_items, { label = "BLADES", value = blades })
 		end
 
-		if scanner3 then
-			table.insert(hud_items, { label = "SCANNER", value = 3 })
+		if scanner > 0 then
+			table.insert(hud_items, { label = "SCANNER", value = scanner })
 		end
 
 		local baseY = 715
