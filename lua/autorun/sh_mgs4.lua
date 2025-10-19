@@ -379,7 +379,12 @@ if SERVER then
 			self:Cqc_reset()
 			self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
 			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
-			self:SetCurrentViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
+			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
+		
+			if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
+				self:GetNWEntity("knife", Entity(0)):Remove()
+				self:SetNWEntity("knife", Entity(0))
+			end
 		end, true)
 
 		target:SetNWBool("is_in_cqc", true)
@@ -502,6 +507,7 @@ if SERVER then
 				target:Cqc_reset()
 				target:SetNWFloat("psyche", 0)
 				target:ForcePosition(false)
+				target:SetEyeAngles(target:EyeAngles() + Angle(0, 270, 0))
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 			end, true)
 		elseif direction == 4 then
@@ -520,6 +526,7 @@ if SERVER then
 				target:Cqc_reset()
 				target:SetNWFloat("psyche", 0)
 				target:ForcePosition(false)
+				target:SetEyeAngles(target:EyeAngles() + Angle(0, 270, 0))
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 			end, true)
 		else
@@ -545,6 +552,8 @@ if SERVER then
 				local target_psyche = target:GetNWFloat("psyche", 100)
 
 				target:SetNWFloat("psyche", target_psyche - stun_damage)
+
+				target:SetEyeAngles(target:EyeAngles() + Angle(0, 180, 0))
 
 				if target:GetNWFloat("psyche", 100) > 0 then
 					target:GetUp()
@@ -673,6 +682,19 @@ if SERVER then
 		else
 			target:SetNWBool("is_grabbed_crouched", false)
 		end
+
+		-- If they have the blades ability, show a knife in their left hand.
+		if self:GetNWInt("blades", 0) > 0 then
+			local knife_ent = ents.Create("prop_dynamic")
+
+			knife_ent:SetModel("models/weapons/w_knife_t.mdl")
+			knife_ent:FollowBone(self, self:LookupBone("ValveBiped.Bip01_L_Hand"))
+			knife_ent:SetLocalPos(Vector(3, -1, 4))
+			knife_ent:SetLocalAngles(Angle(0, 180, 180))
+			knife_ent:Spawn()
+
+			self:SetNWEntity("knife", knife_ent)
+		end
 	end
 
 	function ent:Cqc_grab_crouch(target)
@@ -756,6 +778,11 @@ if SERVER then
 			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
 			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 			self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
+
+			if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
+				self:GetNWEntity("knife", Entity(0)):Remove()
+				self:SetNWEntity("knife", Entity(0))
+			end
 		end, true)
 	end
 
@@ -894,6 +921,12 @@ if SERVER then
 			end
 
 		elseif not self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and self:Crouching() then
+			local current_weapon = self:GetActiveWeapon()
+			if IsValid(current_weapon) then
+				self:SetActiveWeapon(NULL)
+				self:SetNWEntity("holster_weapon", current_weapon)
+			end
+
 			self:PlayMGS4Animation("mgs4_wakeup_start", function()
 				self:SetNWBool("helping_up", true)
 				self:SetCycle(0)
@@ -1030,7 +1063,9 @@ if SERVER then
 		ent:SetNWInt("blades", 3)
 		ent:SetNWInt("scanner", 3)
 
-		-- Visually show knife in right hand when they have the blades skill
+		-- In some animations we hide the gun, so we need to store it here
+		ent:SetNWEntity("holster_weapon", Entity(0))
+
 		ent:SetNWEntity("knife", Entity(0))
 
 		-- How long the player is holding the CQC button for (for knowing if they want to grab or punch)
@@ -1080,6 +1115,12 @@ if SERVER then
 		ply:SetNWInt("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
 		ply:SetNWInt("blades", 0)
 		ply:SetNWInt("scanner", 0)
+		ply:SetNWEntity("holster_weapon", Entity(0))
+
+		if ply:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
+			ply:GetNWEntity("knife", Entity(0)):Remove()
+		end
+
 		ply:SetNWEntity("knife", Entity(0))
 		ply:SetNWBool("cqc_button_held", false)
 		ply:SetNWFloat("cqc_button_hold_time", 0)
@@ -1167,6 +1208,10 @@ if SERVER then
 			elseif not entity:GetNWBool("is_using", false) and entity:GetNWBool("helping_up", false) and not entity:GetNWBool("animation_playing", false) then
 				entity:PlayMGS4Animation("mgs4_wakeup_end", function()
 					entity:SetNWBool("helping_up", false)
+					if entity:GetNWEntity("holster_weapon", Entity(0)) ~= Entity(0) then
+						entity:SetActiveWeapon(entity:GetNWEntity("holster_weapon", Entity(0)))
+						entity:SetNWEntity("holster_weapon", Entity(0))
+					end
 				end, false)
 			end
 
@@ -1462,17 +1507,13 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 		cmd:RemoveKey(IN_MOVELEFT)
 		cmd:RemoveKey(IN_MOVERIGHT)
 		cmd:RemoveKey(IN_DUCK)
-	elseif ply:GetNWBool("is_grabbed", false) then
+	elseif ply:GetNWBool("is_grabbed", false) or ply:GetNWBool("helping_up", false) then
 		cmd:ClearMovement()
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_DUCK)
 		cmd:RemoveKey(IN_ATTACK)
 		cmd:RemoveKey(IN_ATTACK2)
 		cmd:RemoveKey(IN_RELOAD)
-	elseif ply:GetNWBool("helping_up", false) then
-		cmd:ClearMovement()
-		cmd:RemoveKey(IN_JUMP)
-		cmd:RemoveKey(IN_DUCK)
 	end
 end)
 
