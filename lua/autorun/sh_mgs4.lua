@@ -408,6 +408,14 @@ if SERVER then
 			scanned_anim = "mgs4_grabbed_crouched_scan"
 		end
 
+		local scanner_ent = ents.Create("prop_dynamic")
+
+		scanner_ent:SetModel("models/mgs4/items/syringe.mdl")
+		scanner_ent:FollowBone(self, self:LookupBone("ValveBiped.Bip01_R_Hand"))
+		scanner_ent:SetLocalPos(Vector(0, 0, 0))
+		scanner_ent:SetLocalAngles(Angle(0, 0, 0))
+		scanner_ent:Spawn()
+
 		-- Temporarily remove weapon from player until scan is complete
 		local current_weapon = self:GetActiveWeapon()
 		if IsValid(current_weapon) then
@@ -419,6 +427,7 @@ if SERVER then
 			if IsValid(current_weapon) then
 				self:SetActiveWeapon(current_weapon)
 			end
+			scanner_ent:Remove()
 		end, true)
 
 		target:PlayMGS4Animation(scanned_anim, nil, true)
