@@ -385,7 +385,7 @@ if SERVER then
 				self:GetNWEntity("knife", Entity(0)):Remove()
 				self:SetNWEntity("knife", Entity(0))
 			end
-		end, true)
+		end, false)
 
 		target:SetNWBool("is_in_cqc", true)
 		target:PlayMGS4Animation(knifed_anim, function()
@@ -394,7 +394,7 @@ if SERVER then
 			-- Just kill them lmao
 			target:TakeDamage(1000, self, self)
 
-		end, true)
+		end, false)
 	end
 
 	function ent:Cqc_sop_scan(target)
@@ -431,11 +431,11 @@ if SERVER then
 			end
 			scanner_ent:Remove()
 			self:SetNWFloat("stuck_check", 0)
-		end, true)
+		end, false)
 
 		target:PlayMGS4Animation(scanned_anim, function()
 			target:SetNWFloat("stuck_check", 0)
-		end, true)
+		end, false)
 	end
 
 	function ent:Cqc_throw(target, direction)
@@ -841,24 +841,24 @@ if SERVER then
 
 		if not self:GetNWBool("is_aiming", false) then
 			-- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
-			if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+			if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- Holding the CQC button starts choking
 				target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - ((20 * FrameTime()) * self:GetNWInt("cqc_level", 1)), 0))
 				target:SetNWInt("last_nonlethal_damage_type", 2)
 				target:SetNWBool("is_choking", true)
-			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
 				-- Holding and moving forward throws the target in front
 				self:Cqc_throw(target, 1)
-			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
 				-- Holding and moving backward throws the target behind
 				self:Cqc_throw(target, 2)
-			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while holding does the throat cut
 				self:Cqc_throat_cut(target)
-			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) then
+			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while not holding does the scan
 				self:Cqc_sop_scan(target)
-			elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) then
+			elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
 				-- Pressing back button moves backwards
 				self:Cqc_grab_move(target)
 			elseif self:KeyPressed(IN_DUCK) then
