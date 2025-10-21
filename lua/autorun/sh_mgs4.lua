@@ -1400,7 +1400,7 @@ else
 			end
 		end
 
-		-- Psyche in Hud (Only present in Sandbox or other modes that aren't TTT)
+		-- Psyche in Hud
 
 		if GetConVar("mgs4_show_psyche_hud"):GetBool() then
 			if GAMEMODE.Name == "Trouble in Terrorist Town" then
@@ -1426,8 +1426,12 @@ else
 	hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
 		local target = LocalPlayer():GetEyeTrace().Entity
 		if IsValid(target) and target:IsPlayer() then
-			local psyche = target:GetNWFloat("psyche", 0)
-			draw.SimpleText(tostring(math.Round(psyche, 0)) .. "%", "TargetIDSmall", ScrW() / 2, ScrH() / 2 + 70, Color(255,205,0,255), TEXT_ALIGN_CENTER)
+			if GAMEMODE_NAME == "Trouble in Terrorist Town" then
+				-- TODO: Draw psyche status text like health statuses are done in TTT (e.g., Awake, Tired, Half-sleep, Unconscious)
+			else
+				local psyche = target:GetNWFloat("psyche", 0)
+				draw.SimpleText(tostring(math.Round(psyche, 0)) .. "%", "TargetIDSmall", ScrW() / 2, ScrH() / 2 + 70, Color(255,205,0,255), TEXT_ALIGN_CENTER)
+			end
 		end
 	end)
 

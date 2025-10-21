@@ -2,5 +2,4 @@
 {
 	"$basetexture" "models/items/syringe/syringe"
 	"$normalmap" "models/items/syringe/syringe_normal"
-	"$translucent" 1
 }
