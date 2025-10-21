@@ -1,7 +1,0 @@
-"VertexlitGeneric"
-{
-	"$basetexture" "models/items/syringe/mgo_syringe0_tex00"
-	"$basetexture2" "models/items/syringe/mgo_syringe0_tex02"
-	"$normalmap" "models/items/syringe/mgo_syringe0_tex01"
-	"$translucent" 1
-}

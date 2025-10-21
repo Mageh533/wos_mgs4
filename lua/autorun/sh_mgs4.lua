@@ -412,9 +412,11 @@ if SERVER then
 
 		scanner_ent:SetModel("models/mgs4/items/syringe.mdl")
 		scanner_ent:FollowBone(self, self:LookupBone("ValveBiped.Bip01_R_Hand"))
-		scanner_ent:SetLocalPos(Vector(0, 0, 0))
-		scanner_ent:SetLocalAngles(Angle(0, 0, 0))
+		scanner_ent:SetLocalPos(Vector(3, -1, -1))
+		scanner_ent:SetLocalAngles(Angle(100, 90, 0))
 		scanner_ent:Spawn()
+
+		print(scanner_ent)
 
 		-- Temporarily remove weapon from player until scan is complete
 		local current_weapon = self:GetActiveWeapon()
@@ -428,9 +430,12 @@ if SERVER then
 				self:SetActiveWeapon(current_weapon)
 			end
 			scanner_ent:Remove()
+			self:SetNWFloat("stuck_check", 0)
 		end, true)
 
-		target:PlayMGS4Animation(scanned_anim, nil, true)
+		target:PlayMGS4Animation(scanned_anim, function()
+			target:SetNWFloat("stuck_check", 0)
+		end, true)
 	end
 
 	function ent:Cqc_throw(target, direction)
