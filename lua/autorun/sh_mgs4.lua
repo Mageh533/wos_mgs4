@@ -1359,55 +1359,67 @@ else
 
 		if ply:Alive() == false then return end
 
-		-- Player skills hud (always present regardless of gamemode)
+		if GetConVar("mgs4_show_skill_hud"):GetBool() then
+			-- Player skills hud
 
-		local cqc_level = ply:GetNWInt("cqc_level", 0)
-		local blades = ply:GetNWInt("blades", 0)
-		local scanner = ply:GetNWInt("scanner", 0)
+			local cqc_level = ply:GetNWInt("cqc_level", 0)
+			local blades = ply:GetNWInt("blades", 0)
+			local scanner = ply:GetNWInt("scanner", 0)
 
-		local hud_items = {}
+			local hud_items = {}
 
-		if cqc_level > 0 then
-			if cqc_level < 4 then
-				table.insert(hud_items, { label = "CQC+", value = cqc_level })
-			else
-				table.insert(hud_items, { label = "CQC EX", value = nil })
+			if cqc_level > 0 then
+				if cqc_level < 4 then
+					table.insert(hud_items, { label = "CQC+", value = cqc_level })
+				else
+					table.insert(hud_items, { label = "CQC EX", value = nil })
+				end
 			end
-		end
 
-		if blades > 0 then
-			table.insert(hud_items, { label = "BLADES", value = blades })
-		end
+			if blades > 0 then
+				table.insert(hud_items, { label = "BLADES", value = blades })
+			end
 
-		if scanner > 0 then
-			table.insert(hud_items, { label = "SCANNER", value = scanner })
-		end
+			if scanner > 0 then
+				if scanner < 4 then
+					table.insert(hud_items, { label = "SCANNER+", value = scanner })
+				else
+					table.insert(hud_items, { label = "SCANNER EX", value = nil })
+				end
+			end
 
-		local baseY = 715
-		local offsetY = 20
+			local baseY = 715
+			local offsetY = 20
 
-		for i, item in ipairs(hud_items) do
-			local y = baseY + (i - 1) * offsetY
-			draw.SimpleText(item.label, "HudDefault", 135, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
-			if item.value then
-				draw.SimpleText(item.value, "HudDefault", 255, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+			for i, item in ipairs(hud_items) do
+				local y = baseY + (i - 1) * offsetY
+				draw.SimpleText(item.label, "HudDefault", 135, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+				if item.value then
+					draw.SimpleText(item.value, "HudDefault", 255, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+				end
 			end
 		end
 
 		-- Psyche in Hud (Only present in Sandbox or other modes that aren't TTT)
 
-		local psyche = ply:GetNWFloat("psyche", 0)
+		if GetConVar("mgs4_show_psyche_hud"):GetBool() then
+			if GAMEMODE.Name == "Trouble in Terrorist Town" then
+				-- TODO: Draw psyche in the same style as TTT's HUD
+			else
+				local psyche = ply:GetNWFloat("psyche", 0)
 
-		local xOffset = 0
+				local xOffset = 0
 
-		if ply:Armor() > 0 then
-			xOffset = 295
+				if ply:Armor() > 0 then
+					xOffset = 295
+				end
+
+
+				draw.RoundedBox( 10, 315 + xOffset, 973, 245, 80, Color(0,0,0,80))
+				draw.SimpleText("PSYCHE", "HudDefault", 335 + xOffset, 1015, Color(255,205,0,255), TEXT_ALIGN_LEFT)
+				draw.SimpleText(tostring(math.Round(psyche, 0)), "MGS4HudNumbers", 440 + xOffset, 975, Color(255,205,0,255), TEXT_ALIGN_LEFT)
+			end
 		end
-
-
-		draw.RoundedBox( 10, 315 + xOffset, 973, 245, 80, Color(0,0,0,80))
-		draw.SimpleText("PSYCHE", "HudDefault", 335 + xOffset, 1015, Color(255,205,0,255), TEXT_ALIGN_LEFT)
-		draw.SimpleText(tostring(math.Round(psyche, 0)), "MGS4HudNumbers", 440 + xOffset, 975, Color(255,205,0,255), TEXT_ALIGN_LEFT)
 	end)
 
 
