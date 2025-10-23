@@ -22,6 +22,8 @@ function ENT:Initialize()
         self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
 
 		self.UnpickableTime = CurTime() + 2.0 -- Prevent immediate pickup
+		self.PickupType = 0
+		self.Item = nil
 
 		local phys = self:GetPhysicsObject()
 		if phys and phys:IsValid() then
@@ -46,11 +48,46 @@ function ENT:Initialize()
 	end
 end
 
+function ENT:SetPickup( type, item )
+	if not SERVER then return end
+	-- type 1 = skills
+	-- type 2 = weapons
+
+	-- Set model based on type
+	if type == 1 then
+		self:SetModel( "models/mgs4/items/ibox_small.mdl" )
+	elseif type == 2 then
+		local weapon = item
+
+		if IsValid(weapon) and weapon:IsWeapon() then
+			local wepSlot = weapon:GetSlot()
+			if wepSlot == 2 then
+				self:SetModel( "models/mgs4/items/ibox_mid.mdl" )
+			else
+				self:SetModel( "models/mgs4/items/ibox_large.mdl" )
+			end
+		end
+	end
+
+	self.PickupType = type
+	self.Item = item
+end
+
 function ENT:StartTouch( ent )
 	-- Only run on server
 	if not SERVER then return end
 
+	-- Pickup
 	if IsValid(ent) and ent:IsPlayer() and CurTime() > self.UnpickableTime then
+		if self.PickupType == 1 then
+			local skill = self.Item[1]
+			local level = self.Item[2]
+
+			ent:SetNWInt(skill, level)
+		else
+			ent:Give( self.Item:GetClass() )
+		end
+
 		self:Remove()
 	end
 end
