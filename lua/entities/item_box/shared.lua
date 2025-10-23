@@ -7,6 +7,7 @@ ENT.Author = "Mageh533"
 ENT.Category = "MGS4"
 ENT.Contact = "STEAM_0:0:53473978" -- El menda
 ENT.Purpose = "Contains an items which could be either any entity or functions (such as when granting a skill)"
+ENT.AutomaticFrameAdvance = true -- Must be set on client
 ENT.Spawnable = true
 
 -- This will be called on both the Client and Server realms
@@ -17,9 +18,47 @@ function ENT:Initialize()
 	    self:PhysicsInit( SOLID_VPHYSICS )
 	    self:SetMoveType( MOVETYPE_VPHYSICS )
 	    self:SetSolid( SOLID_VPHYSICS )
-        self:EmitSound("sfx/item_popup.wav", 75, 100, 1, CHAN_AUTO)
-        self:SetSequence("idle")
+		self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
+        self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
+
+		self.UnpickableTime = CurTime() + 2.0 -- Prevent immediate pickup
+
+		local phys = self:GetPhysicsObject()
+		if phys and phys:IsValid() then
+			phys:Wake()
+
+			-- Lock rotation cleanly:
+			-- Get the current orientation
+			local ang = phys:GetAngles()
+			-- Apply an angle constraint between the entity and the world
+			constraint.Keepupright(self, ang, 0, 999999)
+
+			self:SetTrigger( true ) -- Enable trigger touch detection
+		end
 	end
+
+	-- Set animation once
+	local seq = self:LookupSequence("spin")
+	if seq and seq >= 0 then
+		self:ResetSequence(seq)
+		self:SetCycle(0)
+		self:SetPlaybackRate(1)
+	end
+end
+
+function ENT:StartTouch( ent )
+	-- Only run on server
+	if not SERVER then return end
+
+	if IsValid(ent) and ent:IsPlayer() and CurTime() > self.UnpickableTime then
+		self:Remove()
+	end
+end
+
+function ENT:Think()
+	self:NextThink( CurTime() ) -- Set the next think to run as soon as possible, i.e. the next frame.
+
+	return true -- Apply NextThink call
 end
 
 if not CLIENT then return end
