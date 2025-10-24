@@ -8,22 +8,26 @@ ENT.Category = "MGS4"
 ENT.Contact = "STEAM_0:0:53473978" -- El menda
 ENT.Purpose = "Contains an items which could be either any entity or functions (such as when granting a skill)"
 ENT.AutomaticFrameAdvance = true -- Must be set on client
-ENT.Spawnable = true
+ENT.Spawnable = false
+
+function ENT:SecondInitialize()
+	-- To be overridden in derived entities
+end
 
 -- This will be called on both the Client and Server realms
 function ENT:Initialize()
 	-- Ensure code for the Server realm does not accidentally run on the Client
 	if SERVER then
-	    self:SetModel( "models/mgs4/items/ibox_large.mdl" )
+		self:SetModel("models/mgs4/items/ibox_large.mdl")
 	    self:PhysicsInit( SOLID_VPHYSICS )
 	    self:SetMoveType( MOVETYPE_VPHYSICS )
 	    self:SetSolid( SOLID_VPHYSICS )
 		self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
         self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
 
-		self.UnpickableTime = CurTime() + 2.0 -- Prevent immediate pickup
 		self.PickupType = 0
 		self.Item = nil
+		self.UnpickableTime = CurTime() + 2.0  -- Reset unpickable time on initialize
 
 		local phys = self:GetPhysicsObject()
 		if phys and phys:IsValid() then
@@ -37,6 +41,8 @@ function ENT:Initialize()
 
 			self:SetTrigger( true ) -- Enable trigger touch detection
 		end
+
+		self:SecondInitialize()
 	end
 
 	-- Set animation once
@@ -85,7 +91,9 @@ function ENT:StartTouch( ent )
 
 			ent:SetNWInt(skill, level)
 		else
-			ent:Give( self.Item:GetClass() )
+			if IsValid(self.Item) and self.Item:IsWeapon() then
+				ent:Give( self.Item:GetClass() )
+			end
 		end
 
 		self:Remove()

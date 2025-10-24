@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	"$basetexture" "vgui/entities/scannerplus2"
+	"$translucent" 1
+}

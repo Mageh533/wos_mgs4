@@ -691,6 +691,15 @@ if SERVER then
 			target:SetNWFloat("stuck_check", 0)
 		end, true)
 
+		-- Make them drop their weapon
+		local target_weapon = target:GetActiveWeapon()
+		if IsValid(target_weapon) and self:GetNWInt("cqc_level", 0) >= 3 then
+			target:StripWeapon(target_weapon:GetClass())
+			local wep_drop = ents.Create("item_box")
+			wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
+			wep_drop:Spawn()
+		end
+
 		if self:Crouching() then
 			target:SetNWBool("is_grabbed_crouched", true)
 		else
@@ -1074,8 +1083,8 @@ if SERVER then
 		ent:SetNWInt("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
 
 		-- Other skills
-		ent:SetNWInt("blades", 3)
-		ent:SetNWInt("scanner", 3)
+		ent:SetNWInt("blades", 0)
+		ent:SetNWInt("scanner", 0)
 
 		-- In some animations we hide the gun, so we need to store it here
 		ent:SetNWEntity("holster_weapon", Entity(0))
