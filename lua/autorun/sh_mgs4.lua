@@ -246,6 +246,25 @@ if SERVER then
 		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
+	-- Drops their weapon using an item box
+	function ent:DropWeaponAsItem()
+		if not self then return end
+
+		-- Make them drop their weapon in an item box
+		local active_weapon = self:GetActiveWeapon()
+		if IsValid(active_weapon) then
+			local weapon_class = active_weapon:GetClass()
+			self:StripWeapon(weapon_class)
+			self:SetActiveWeapon(NULL)
+			local wep_drop = ents.Create("item_box")
+			wep_drop:SetPos(self:GetPos() + Vector(0,0,20))
+			wep_drop:Spawn()
+			wep_drop:SetPickup(2, weapon_class)
+			local rand_vec = VectorRand(-400,400)
+			wep_drop:GetPhysicsObject():SetVelocity(Vector(rand_vec.x, rand_vec.y, 400))
+		end
+	end
+
 	function ent:Cqc_reset()
 		if not self then return end
 
@@ -705,21 +724,10 @@ if SERVER then
 			target:ForcePosition(false)
 			target:SetNWFloat("stuck_check", 0)
 		end, true)
-
+		
 		-- Make them drop their weapon in an item box
-		local target_active_weapon = target:GetActiveWeapon()
-		if IsValid(target_active_weapon) then
-			local target_weapon = target_active_weapon:GetClass()
-			if target_weapon and self:GetNWInt("cqc_level", 0) >= 3 then
-				target:StripWeapon(target_weapon)
-				target:SetActiveWeapon(NULL)
-				local wep_drop = ents.Create("item_box")
-				wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
-				wep_drop:Spawn()
-				wep_drop:SetPickup(2, target_weapon)
-				local rand_vec = VectorRand(-400,400)
-				wep_drop:GetPhysicsObject():SetVelocity(Vector(rand_vec.x, rand_vec.y, 400))
-			end
+		if self:GetNWInt("cqc_level", 0) >= 3 then
+			target:DropWeaponAsItem()
 		end
 
 		if self:Crouching() then
@@ -1376,7 +1384,7 @@ else
 
 	surface.CreateFont("MGS4HudNumbers", {
 		font = "Tahoma",
-		size = 72,
+		size = math.max(1, 72 * (ScrH() / 1080)),
 		blursize = 0,
 		scanlines = 0,
 		antialias = true,
@@ -1394,6 +1402,8 @@ else
 		local ply = LocalPlayer()
 
 		if ply:Alive() == false then return end
+
+		local refW, refH = 1920, 1080
 
 		if GetConVar("mgs4_show_skill_hud"):GetBool() then
 			-- Player skills hud
@@ -1428,10 +1438,10 @@ else
 			local offsetY = 20
 
 			for i, item in ipairs(hud_items) do
-				local y = baseY + (i - 1) * offsetY
-				draw.SimpleText(item.label, "HudDefault", 135, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+				local y = ScrH() * (baseY / refH) + (i - 1) * (ScrH() * (offsetY / refH))
+				draw.SimpleText(item.label, "HudDefault", ScrW() * (135 / refW), y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
 				if item.value then
-					draw.SimpleText(item.value, "HudDefault", 255, y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
+					draw.SimpleText(item.value, "HudDefault", ScrW() * (255 / refW), y, Color(255,255,0,255), TEXT_ALIGN_LEFT)
 				end
 			end
 		end
@@ -1445,15 +1455,36 @@ else
 				local psyche = ply:GetNWFloat("psyche", 0)
 
 				local xOffset = 0
-
 				if ply:Armor() > 0 then
 					xOffset = 295
 				end
 
+				local baseX, baseY = 315 + xOffset, 973
+				local boxW, boxH = 245, 80
 
-				draw.RoundedBox( 10, 315 + xOffset, 973, 245, 80, Color(0,0,0,80))
-				draw.SimpleText("PSYCHE", "HudDefault", 335 + xOffset, 1015, Color(255,205,0,255), TEXT_ALIGN_LEFT)
-				draw.SimpleText(tostring(math.Round(psyche, 0)), "MGS4HudNumbers", 440 + xOffset, 975, Color(255,205,0,255), TEXT_ALIGN_LEFT)
+				-- Use the same screen scaling as above
+				draw.RoundedBox(10,
+					ScrW() * (baseX / refW),
+					ScrH() * (baseY / refH),
+					ScrW() * (boxW / refW),
+					ScrH() * (boxH / refH),
+					Color(0, 0, 0, 80)
+				)
+
+				draw.SimpleText("PSYCHE", "HudDefault",
+					ScrW() * ((335 + xOffset) / refW),
+					ScrH() * (1015 / refH),
+					Color(255, 205, 0, 255),
+					TEXT_ALIGN_LEFT
+				)
+
+				draw.SimpleText(tostring(math.Round(psyche, 0)),
+					"MGS4HudNumbers",
+					ScrW() * ((440 + xOffset) / refW),
+					ScrH() * (975 / refH),
+					Color(255, 205, 0, 255),
+					TEXT_ALIGN_LEFT
+				)
 			end
 		end
 	end)

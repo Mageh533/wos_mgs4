@@ -105,6 +105,8 @@ function ENT:StartTouch( ent )
 			local level = self.Item[2]
 
 			ent:SetNWInt(skill, level)
+
+			self:EmitSound("sfx/obtained_item.wav", 100, 100, 1, CHAN_AUTO)
 		else
 			if self.Item then
 				if ent:GetWeapon(self.Item) ~= NULL then
@@ -123,6 +125,8 @@ function ENT:StartTouch( ent )
 		end
 
 		self:Remove()
+	else
+		self:EmitSound("sfx/full_ammo_item.wav",  100, 100, 1, CHAN_AUTO)
 	end
 end
 
