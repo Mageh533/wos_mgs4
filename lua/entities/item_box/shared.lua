@@ -18,12 +18,15 @@ end
 function ENT:Initialize()
 	-- Ensure code for the Server realm does not accidentally run on the Client
 	if SERVER then
-		self:SetModel("models/mgs4/items/ibox_large.mdl")
 	    self:PhysicsInit( SOLID_VPHYSICS )
 	    self:SetMoveType( MOVETYPE_VPHYSICS )
 	    self:SetSolid( SOLID_VPHYSICS )
 		self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
         self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
+
+		if self:GetModel() == nil or self:GetModel() == "" then
+			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
+		end
 
 		if self.PickupType == nil then
 			self.PickupType = 0
@@ -70,8 +73,18 @@ function ENT:SetPickup( type, item )
 	elseif type == 2 then
 		local weapon = ents.Create(item)
 
-		local wepSlot = weapon:GetSlot()
-		if wepSlot == 1 then
+		local wepHoldType = weapon:GetHoldType()
+
+		local small_weapon = false
+
+		for _, holdty in pairs(Small_weapons_holdtypes) do
+			if wepHoldType == holdty then
+				small_weapon = true
+				break
+			end
+		end
+
+		if small_weapon then
 			self:SetModel( "models/mgs4/items/ibox_mid.mdl" )
 		else
 			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
@@ -95,9 +108,7 @@ function ENT:StartTouch( ent )
 			ent:SetNWInt(skill, level)
 		else
 			if self.Item then
-				print("Giving weapon: " .. self.Item)
 				if ent:GetWeapon(self.Item) ~= NULL then
-					print("Player already has the weapon, giving ammo instead.")
 					-- Player already has the weapon, give them ammo instead
 					local wep = ent:GetWeapon( self.Item )
 
@@ -106,7 +117,6 @@ function ENT:StartTouch( ent )
 
 					ent:GiveAmmo(ammoAmount, ammoType)
 				else
-					print("Player does not have the weapon, giving weapon.")
 					ent:Give( self.Item )
 				end
 

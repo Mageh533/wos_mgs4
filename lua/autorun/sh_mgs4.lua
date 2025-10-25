@@ -290,8 +290,18 @@ if SERVER then
 		local current_weapon = self:GetActiveWeapon()
 
 		if IsValid(current_weapon) then
-			local weapon_slot = current_weapon:GetSlot()
-			if weapon_slot ~= 1 then
+			local weapon_hold_type = current_weapon:GetHoldType()
+
+			local large_weapon = true
+
+			for _, hold_type in pairs(Small_weapons_holdtypes) do
+				if weapon_hold_type == hold_type then
+					large_weapon = false
+					break
+				end
+			end
+
+			if large_weapon then
 				self:ForcePosition(true)
 				self:PlayMGS4Animation("mgs4_gun_attack", function ()
 					self:Cqc_reset()
@@ -895,13 +905,18 @@ if SERVER then
 		local is_in_cqc = self:GetNWBool("is_in_cqc", false)
 		local cqc_target = self:TraceForTarget()
 		local cqc_level = self:GetNWInt("cqc_level", 1)
-		local large_weapon = false -- Large weapons have a different CQC action and can only throw with EX level CQC
+		local large_weapon = true -- Large weapons have a different CQC action and can only throw with EX level CQC
 
 		local current_weapon = self:GetActiveWeapon()
 		if IsValid(current_weapon) then
-			local weapon_slot = current_weapon:GetSlot()
-			if weapon_slot ~= 1 then
-				large_weapon = true
+			local weapon_hold_type = current_weapon:GetHoldType()
+			-- Check if the weapon is a small hold type then assume its a small weapon
+			-- I know its trash but it generally covers most use cases since getting the weapon slot is not reliable
+			for _, hold_type in pairs(Small_weapons_holdtypes) do
+				if weapon_hold_type == hold_type then
+					large_weapon = false
+					break
+				end
 			end
 		end
 
@@ -1211,7 +1226,7 @@ if SERVER then
 				KnockoutLoop(entity)
 			end
 
-			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 and entity:OnGround() then
+			if entity:GetNWBool("cqc_button_held") and not entity:GetNWBool("animation_playing", false) and entity:OnGround() then
 				entity:SetNWFloat("cqc_button_hold_time", entity:GetNWFloat("cqc_button_hold_time", 0) + FrameTime())
 			end
 
@@ -1223,7 +1238,7 @@ if SERVER then
 			end
 
 			-- Press it once for Punch
-			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) and entity:GetActiveWeapon():GetSlot() ~= 0 and entity:GetActiveWeapon():GetSlot() ~= 4 then
+			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) then
 				entity:SetNWFloat("cqc_button_hold_time", 0)
 				entity:Cqc_punch()
 			end

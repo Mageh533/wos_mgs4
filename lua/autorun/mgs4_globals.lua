@@ -1,4 +1,4 @@
--- Server convars
+-- === Server convars ===
 CreateConVar(
 	"mgs4_psyche_recovery",
 	"1",
@@ -31,7 +31,7 @@ CreateConVar(
 	"Show the psyche in the HUD, generally recommended to be off in TTT since it would be too obvious when someone is using tranquilizers"
 )
 
--- Client convars
+-- === Client convars ===
 CreateClientConVar(
 	"mgs4_cqc_button",
 	"110",
@@ -40,6 +40,33 @@ CreateClientConVar(
 	"This is the BUTTON_CODE which handles the CQC button. If you don't know what this means, just use the mgs4_config command to set your button there."
 )
 
-CreateClientConVar("mgs4_show_skill_hud", "1", true, false, "Show the skill HUD.", 0, 1)
+CreateClientConVar("mgs4_show_skill_hud",
+	"1",
+	true,
+	false,
+	"Show the skill HUD.",
+	0,
+	1
+)
 
-CreateClientConVar("mgs4_actions_in_thirdperson", "1", true, false, "Show actions in third-person view.", 0, 1)
+CreateClientConVar("mgs4_actions_in_thirdperson",
+	"1",
+	true,
+	false,
+	"Show actions in third-person view.",
+	0,
+	1
+)
+
+-- === Global variables ===
+Small_weapons_holdtypes = {
+	"pistol",
+	"revolver",
+	"duel",
+	"camera",
+	"normal",
+	"fist",
+	"melee",
+	"knife",
+	"magic"
+}
