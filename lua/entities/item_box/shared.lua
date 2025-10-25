@@ -61,6 +61,13 @@ function ENT:SetPickup( type, item )
 	-- Set model based on type
 	if type == 1 then
 		self:SetModel( "models/mgs4/items/ibox_small.mdl" )
+
+		local fn = Ability_names[item[1]]
+
+		if _G.type(fn) == "function" then
+			self:SetNWString("pickup_text", fn(item[2]))
+		end
+
 	elseif type == 2 then
 		local weapon = ents.Create(item)
 
@@ -80,6 +87,8 @@ function ENT:SetPickup( type, item )
 		else
 			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
 		end
+
+		self:SetNWString("pickup_text", weapon:GetPrintName())
 	end
 
 	-- Reset animations
@@ -138,7 +147,31 @@ end
 
 if not CLIENT then return end
 
+-- Draw some 3D text
+local function Draw3DText( pos, scale, text)
+	if LocalPlayer():GetPos():Distance(pos) > 256 then return end
+
+	local angle = ( pos - EyePos() ):GetNormalized():Angle()
+
+	-- Correct the angle so it points at the camera
+	-- This is usually done by trial and error using Up(), Right() and Forward() axes
+	angle:RotateAroundAxis( angle:Up(), -90 )
+	angle:RotateAroundAxis( angle:Forward(), 90 )
+
+	cam.Start3D2D( pos, angle, scale )
+		-- Actually draw the text. Customize this to your liking.
+		draw.DrawText( text, "HudDefault", 0, 0, Color(255,255,0,255), TEXT_ALIGN_CENTER )
+	cam.End3D2D()
+end
+
 -- Client-side draw function for the Entity
 function ENT:Draw()
     self:DrawModel() -- Draws the model of the Entity. This function is called every frame.
+
+	local text = self:GetNWString("pickup_text", "")
+
+	local mins, maxs = self:GetModelBounds()
+	local pos = self:GetPos() + Vector(0, 0, maxs.z + 3)
+
+	Draw3DText(pos, 0.5, text)
 end

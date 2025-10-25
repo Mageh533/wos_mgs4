@@ -1412,26 +1412,22 @@ else
 			local blades = ply:GetNWInt("blades", 0)
 			local scanner = ply:GetNWInt("scanner", 0)
 
+			local cqc_label = Ability_names["cqc_level"]
+			local blades_label = Ability_names["blades"]
+			local scanner_label = Ability_names["scanner"]
+
 			local hud_items = {}
 
 			if cqc_level > 0 then
-				if cqc_level < 4 then
-					table.insert(hud_items, { label = "CQC+", value = cqc_level })
-				else
-					table.insert(hud_items, { label = "CQC EX", value = nil })
-				end
+				table.insert(hud_items, { label = cqc_label(cqc_level, true), value = cqc_level < 4 and cqc_level or nil })
 			end
 
 			if blades > 0 then
-				table.insert(hud_items, { label = "BLADES", value = blades })
+				table.insert(hud_items, { label = blades_label(blades, true), value = blades < 4 and blades or nil })
 			end
 
 			if scanner > 0 then
-				if scanner < 4 then
-					table.insert(hud_items, { label = "SCANNER+", value = scanner })
-				else
-					table.insert(hud_items, { label = "SCANNER EX", value = nil })
-				end
+				table.insert(hud_items, { label = scanner_label(scanner, true), value = scanner < 4 and scanner or nil })
 			end
 
 			local baseY = 715
@@ -1488,7 +1484,6 @@ else
 			end
 		end
 	end)
-
 
 	hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
 		local target = LocalPlayer():GetEyeTrace().Entity

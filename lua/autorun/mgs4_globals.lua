@@ -72,3 +72,21 @@ Small_weapons_holdtypes = {
 	"knife",
 	"magic"
 }
+
+Ability_names = {
+	["cqc_level"] = function( lvl, displayOnly )
+		if lvl >= 4 then return "CQC EX" end
+		if displayOnly then return "CQC+" end
+		return "CQC+ " .. lvl
+	end,
+	["blades"] = function( lvl, displayOnly )
+		if lvl >= 4 then return "BLADES EX" end
+		if displayOnly then return "BLADES" end
+		return "BLADES " .. lvl
+	end,
+	["scanner"] = function( lvl, displayOnly )
+		if lvl >= 4 then return "SCANNER EX" end
+		if displayOnly then return "SCANNER" end
+		return "SCANNER " .. lvl
+	end
+}
