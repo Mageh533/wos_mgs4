@@ -88,7 +88,7 @@ function ENT:SetPickup( type, item )
 			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
 		end
 
-		self:SetNWString("pickup_text", weapon:GetPrintName())
+		self:SetNWString("pickup_text", item)
 	end
 
 	-- Reset animations
@@ -158,9 +158,9 @@ local function Draw3DText( pos, scale, text)
 	angle:RotateAroundAxis( angle:Up(), -90 )
 	angle:RotateAroundAxis( angle:Forward(), 90 )
 
-	cam.Start3D2D( pos, angle, scale )
-		-- Actually draw the text. Customize this to your liking.
-		draw.DrawText( text, "HudDefault", 0, 0, Color(255,255,0,255), TEXT_ALIGN_CENTER )
+	cam.Start3D2D( pos, angle, 0.25 )  -- Reduced scale from 0.5 to 0.25
+		-- Actually draw the text with smaller font
+		draw.DrawText( text, "HudHintTextLarge", 0, 0, Color(255,255,0,255), TEXT_ALIGN_CENTER )
 	cam.End3D2D()
 end
 
