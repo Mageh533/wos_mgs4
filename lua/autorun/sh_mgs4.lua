@@ -577,6 +577,11 @@ if SERVER then
 				target:ForcePosition(false)
 			end, true)
 		end
+
+		if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
+			self:GetNWEntity("knife", Entity(0)):Remove()
+			self:SetNWEntity("knife", Entity(0))
+		end
 	end
 
 	function ent:Cqc_counter(target)
@@ -692,11 +697,13 @@ if SERVER then
 		end, true)
 
 		-- Make them drop their weapon
-		local target_weapon = target:GetActiveWeapon()
-		if IsValid(target_weapon) and self:GetNWInt("cqc_level", 0) >= 3 then
-			target:StripWeapon(target_weapon:GetClass())
+		local target_weapon = target:GetActiveWeapon():GetClass()
+		if target_weapon and self:GetNWInt("cqc_level", 0) >= 3 then
+			target:StripWeapon(target_weapon)
+			target:SetActiveWeapon(NULL)
 			local wep_drop = ents.Create("item_box")
 			wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
+			wep_drop:SetPickup(2, target_weapon)
 			wep_drop:Spawn()
 		end
 

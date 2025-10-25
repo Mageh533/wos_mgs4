@@ -6,7 +6,7 @@ ENT.PrintName = "Item box"
 ENT.Author = "Mageh533"
 ENT.Category = "MGS4"
 ENT.Contact = "STEAM_0:0:53473978" -- El menda
-ENT.Purpose = "Contains an items which could be either any entity or functions (such as when granting a skill)"
+ENT.Purpose = "Contains an items which could be either any weapon or skills"
 ENT.AutomaticFrameAdvance = true -- Must be set on client
 ENT.Spawnable = false
 
@@ -25,8 +25,14 @@ function ENT:Initialize()
 		self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
         self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
 
-		self.PickupType = 0
-		self.Item = nil
+		if self.PickupType == nil then
+			self.PickupType = 0
+		end
+
+		if self.Item == nil then
+			self.Item = nil
+		end
+		
 		self.UnpickableTime = CurTime() + 2.0  -- Reset unpickable time on initialize
 
 		local phys = self:GetPhysicsObject()
@@ -44,7 +50,6 @@ function ENT:Initialize()
 
 		self:SecondInitialize()
 	end
-
 	-- Set animation once
 	local seq = self:LookupSequence("spin")
 	if seq and seq >= 0 then
@@ -52,10 +57,10 @@ function ENT:Initialize()
 		self:SetCycle(0)
 		self:SetPlaybackRate(1)
 	end
+
 end
 
 function ENT:SetPickup( type, item )
-	if not SERVER then return end
 	-- type 1 = skills
 	-- type 2 = weapons
 
@@ -63,15 +68,13 @@ function ENT:SetPickup( type, item )
 	if type == 1 then
 		self:SetModel( "models/mgs4/items/ibox_small.mdl" )
 	elseif type == 2 then
-		local weapon = item
+		local weapon = ents.Create(item)
 
-		if IsValid(weapon) and weapon:IsWeapon() then
-			local wepSlot = weapon:GetSlot()
-			if wepSlot == 2 then
-				self:SetModel( "models/mgs4/items/ibox_mid.mdl" )
-			else
-				self:SetModel( "models/mgs4/items/ibox_large.mdl" )
-			end
+		local wepSlot = weapon:GetSlot()
+		if wepSlot == 1 then
+			self:SetModel( "models/mgs4/items/ibox_mid.mdl" )
+		else
+			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
 		end
 	end
 
@@ -91,8 +94,8 @@ function ENT:StartTouch( ent )
 
 			ent:SetNWInt(skill, level)
 		else
-			if IsValid(self.Item) and self.Item:IsWeapon() then
-				ent:Give( self.Item:GetClass() )
+			if self.Item then
+				ent:Give( self.Item )
 			end
 		end
 
