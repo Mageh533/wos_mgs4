@@ -18,28 +18,19 @@ end
 function ENT:Initialize()
 	-- Ensure code for the Server realm does not accidentally run on the Client
 	if SERVER then
+		self:SetModel( "models/mgs4/items/ibox_large.mdl" )
 	    self:PhysicsInit( SOLID_VPHYSICS )
 	    self:SetMoveType( MOVETYPE_VPHYSICS )
 	    self:SetSolid( SOLID_VPHYSICS )
 		self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
         self:EmitSound("sfx/item_popup.wav", 100, 100, 1, CHAN_AUTO)
 
-		if self:GetModel() == nil or self:GetModel() == "" then
-			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
-		end
-
-		if self.PickupType == nil then
-			self.PickupType = 0
-		end
-
-		if self.Item == nil then
-			self.Item = nil
-		end
-
+		self.PickupType = 0
+		self.Item = nil
 		self.UnpickableTime = CurTime() + 2.0  -- Reset unpickable time on initialize
 
 		local phys = self:GetPhysicsObject()
-		if phys and phys:IsValid() then
+		if IsValid(phys) then
 			phys:Wake()
 
 			-- Lock rotation cleanly:
@@ -89,6 +80,14 @@ function ENT:SetPickup( type, item )
 		else
 			self:SetModel( "models/mgs4/items/ibox_large.mdl" )
 		end
+	end
+
+	-- Reset animations
+	local seq = self:LookupSequence("spin")
+	if seq and seq >= 0 then
+		self:ResetSequence(seq)
+		self:SetCycle(0)
+		self:SetPlaybackRate(1)
 	end
 
 	self.PickupType = type

@@ -715,8 +715,10 @@ if SERVER then
 				target:SetActiveWeapon(NULL)
 				local wep_drop = ents.Create("item_box")
 				wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
-				wep_drop:SetPickup(2, target_weapon)
 				wep_drop:Spawn()
+				wep_drop:SetPickup(2, target_weapon)
+				local rand_vec = VectorRand(-400,400)
+				wep_drop:GetPhysicsObject():SetVelocity(Vector(rand_vec.x, rand_vec.y, 400))
 			end
 		end
 

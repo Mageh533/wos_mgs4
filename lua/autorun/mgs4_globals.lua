@@ -67,6 +67,8 @@ Small_weapons_holdtypes = {
 	"normal",
 	"fist",
 	"melee",
+	"grenade",
+	"slam",
 	"knife",
 	"magic"
 }
