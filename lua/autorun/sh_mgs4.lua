@@ -696,15 +696,18 @@ if SERVER then
 			target:SetNWFloat("stuck_check", 0)
 		end, true)
 
-		-- Make them drop their weapon
-		local target_weapon = target:GetActiveWeapon():GetClass()
-		if target_weapon and self:GetNWInt("cqc_level", 0) >= 3 then
-			target:StripWeapon(target_weapon)
-			target:SetActiveWeapon(NULL)
-			local wep_drop = ents.Create("item_box")
-			wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
-			wep_drop:SetPickup(2, target_weapon)
-			wep_drop:Spawn()
+		-- Make them drop their weapon in an item box
+		local target_active_weapon = target:GetActiveWeapon()
+		if IsValid(target_active_weapon) then
+			local target_weapon = target_active_weapon:GetClass()
+			if target_weapon and self:GetNWInt("cqc_level", 0) >= 3 then
+				target:StripWeapon(target_weapon)
+				target:SetActiveWeapon(NULL)
+				local wep_drop = ents.Create("item_box")
+				wep_drop:SetPos(target:GetPos() + Vector(0,0,20))
+				wep_drop:SetPickup(2, target_weapon)
+				wep_drop:Spawn()
+			end
 		end
 
 		if self:Crouching() then

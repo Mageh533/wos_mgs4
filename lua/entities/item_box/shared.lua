@@ -32,7 +32,7 @@ function ENT:Initialize()
 		if self.Item == nil then
 			self.Item = nil
 		end
-		
+
 		self.UnpickableTime = CurTime() + 2.0  -- Reset unpickable time on initialize
 
 		local phys = self:GetPhysicsObject()
@@ -95,7 +95,21 @@ function ENT:StartTouch( ent )
 			ent:SetNWInt(skill, level)
 		else
 			if self.Item then
-				ent:Give( self.Item )
+				print("Giving weapon: " .. self.Item)
+				if ent:GetWeapon(self.Item) ~= NULL then
+					print("Player already has the weapon, giving ammo instead.")
+					-- Player already has the weapon, give them ammo instead
+					local wep = ent:GetWeapon( self.Item )
+
+					local ammoType = wep:GetPrimaryAmmoType()
+					local ammoAmount = wep:GetMaxClip1()  -- Give 1 clip size worth of ammo
+
+					ent:GiveAmmo(ammoAmount, ammoType)
+				else
+					print("Player does not have the weapon, giving weapon.")
+					ent:Give( self.Item )
+				end
+
 			end
 		end
 
