@@ -269,7 +269,7 @@ if SERVER then
 		if not self then return end
 
 		self:SetNWBool("is_in_cqc", false)
-		self:SetNWEntity("cqc_grabbing", Entity(0))
+		self:SetNWEntity("cqc_grabbing", NULL)
 		self:SetNWBool("is_grabbed", false)
 		self:SetNWBool("is_grabbed_crouched", false)
 		self:SetNWBool("is_choking", false)
@@ -410,9 +410,9 @@ if SERVER then
 			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
 			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 		
-			if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
-				self:GetNWEntity("knife", Entity(0)):Remove()
-				self:SetNWEntity("knife", Entity(0))
+			if self:GetNWEntity("knife", NULL) ~= NULL then
+				self:GetNWEntity("knife", NULL):Remove()
+				self:SetNWEntity("knife", NULL)
 			end
 		end, false)
 
@@ -607,9 +607,9 @@ if SERVER then
 			end, true)
 		end
 
-		if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
-			self:GetNWEntity("knife", Entity(0)):Remove()
-			self:SetNWEntity("knife", Entity(0))
+		if self:GetNWEntity("knife", NULL) ~= NULL then
+			self:GetNWEntity("knife", NULL):Remove()
+			self:SetNWEntity("knife", NULL)
 		end
 	end
 
@@ -786,7 +786,7 @@ if SERVER then
 			local standed_escaped_anim = "mgs4_grab_escaped"
 			local crouched_letgo_anim = "mgs4_grab_crouched_letgo"
 			local crouched_escaped_anim = "mgs4_grab_crouched_escaped"
-			local target = self:GetNWEntity("cqc_grabbing", Entity(0))
+			local target = self:GetNWEntity("cqc_grabbing", NULL)
 
 			if crouched then
 				if target:GetNWFloat("grab_escape_progress", 0) <= 0 then
@@ -832,9 +832,9 @@ if SERVER then
 			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 			self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 
-			if self:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
-				self:GetNWEntity("knife", Entity(0)):Remove()
-				self:SetNWEntity("knife", Entity(0))
+			if self:GetNWEntity("knife", NULL) ~= NULL then
+				self:GetNWEntity("knife", NULL):Remove()
+				self:SetNWEntity("knife", NULL)
 			end
 		end, true)
 	end
@@ -843,7 +843,7 @@ if SERVER then
 	function ent:Cqc_loop()
 		if not self then return end
 
-		local target = self:GetNWEntity("cqc_grabbing", Entity(0))
+		local target = self:GetNWEntity("cqc_grabbing", NULL)
 		if not IsValid(target) then return end
 
 		-- If target or player dies, gets knocked out or player lets go. Stop the loop
@@ -1020,11 +1020,11 @@ if SERVER then
 			ply:SetNWBool("will_grab", false)
 		end
 
-		if key == IN_ATTACK2 and ply:GetNWEntity("cqc_grabbing") ~= Entity(0) then
+		if key == IN_ATTACK2 and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL then
 			ply:SetNWBool("is_aiming", not ply:GetNWBool("is_aiming", false))
 		end
 
-		if key == IN_ATTACK and ply:GetNWEntity("cqc_grabbing") ~= Entity(0) and not ply:GetNWBool("is_aiming", false) then
+		if key == IN_ATTACK and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false) then
 			ply:SetNWBool("is_knife", true)
 		end
 
@@ -1087,7 +1087,7 @@ if SERVER then
 		ent:SetNWBool("animation_playing", false)
 
 		ent:SetNWBool("will_grab", false)
-		ent:SetNWEntity("cqc_grabbing", Entity(0))
+		ent:SetNWEntity("cqc_grabbing", NULL)
 
 		ent:SetNWBool("is_in_cqc", false)
 		ent:SetNWBool("is_grabbed", false)
@@ -1122,9 +1122,9 @@ if SERVER then
 		ent:SetNWInt("scanner", 0)
 
 		-- In some animations we hide the gun, so we need to store it here
-		ent:SetNWEntity("holster_weapon", Entity(0))
+		ent:SetNWEntity("holster_weapon", NULL)
 
-		ent:SetNWEntity("knife", Entity(0))
+		ent:SetNWEntity("knife", NULL)
 
 		-- How long the player is holding the CQC button for (for knowing if they want to grab or punch)
 		ent:SetNWBool("cqc_button_held", false)
@@ -1147,10 +1147,10 @@ if SERVER then
 		ent:SetNWBool("is_knocked_out", false)
 
 		---- Last Non-Lethal Damage Type
-		--- 0 = CQC Stun (Face up)
+		--- 0 = Stun (Face up)
 		--- 1 = Tranquilizers
 		--- 2 = Generic Stun
-		--- 3 = CQC Stun (Face down)
+		--- 3 = Stun (Face down)
 		ent:SetNWInt("last_nonlethal_damage_type", 0)
 	end)
 
@@ -1158,7 +1158,7 @@ if SERVER then
 	hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
 		ply:SetNWBool("animation_playing", false)
 		ply:SetNWBool("will_grab", false)
-		ply:SetNWEntity("cqc_grabbing", Entity(0))
+		ply:SetNWEntity("cqc_grabbing", NULL)
 		ply:SetNWBool("is_in_cqc", false)
 		ply:SetNWBool("is_grabbed", false)
 		ply:SetNWBool("is_grabbed_crouched", false)
@@ -1173,13 +1173,13 @@ if SERVER then
 		ply:SetNWInt("cqc_level", GetConVar("mgs4_base_cqc_level"):GetInt())
 		ply:SetNWInt("blades", 0)
 		ply:SetNWInt("scanner", 0)
-		ply:SetNWEntity("holster_weapon", Entity(0))
+		ply:SetNWEntity("holster_weapon", NULL)
 
-		if ply:GetNWEntity("knife", Entity(0)) ~= Entity(0) then
-			ply:GetNWEntity("knife", Entity(0)):Remove()
+		if ply:GetNWEntity("knife", NULL) ~= NULL then
+			ply:GetNWEntity("knife", NULL):Remove()
 		end
 
-		ply:SetNWEntity("knife", Entity(0))
+		ply:SetNWEntity("knife", NULL)
 		ply:SetNWBool("cqc_button_held", false)
 		ply:SetNWFloat("cqc_button_hold_time", 0)
 		ply:SetNWFloat("cqc_punch_time_left", 0)
@@ -1192,8 +1192,8 @@ if SERVER then
 	end)
 
 	hook.Add("DoPlayerDeath", "MGS4PlayerPreDeathCleanup", function(ply, attacker, dmg)
-		if ply:GetNWBool("cqc_grabbing", Entity(0)) ~= Entity(0) then
-			local target = ply:GetNWBool("cqc_grabbing", Entity(0))
+		if ply:GetNWBool("cqc_grabbing", NULL) ~= NULL then
+			local target = ply:GetNWBool("cqc_grabbing", NULL)
 			target:Cqc_grab_letgo(1, target:GetNWBool("is_grabbed_crouched", false))
 		end
 	end)
@@ -1202,20 +1202,68 @@ if SERVER then
 	hook.Add("EntityTakeDamage", "MGS4EntityTakeDamage", function(ent, dmginfo)
 		if not IsValid(ent) then return end
 
-		if dmginfo:GetAttacker():GetNWEntity("cqc_grabbing", Entity(0)) == ent then
+		if dmginfo:GetAttacker():GetNWEntity("cqc_grabbing", NULL) == ent then
 			-- Prevent damage from the grabber while being grabbed
 			return true
 		end
 
 		-- Check if the entity is a player or NPC
-		if ent:IsPlayer() or ent:IsNPC() then
+		if GetConVar("mgs4_psyche_physics_damage"):GetBool() and (ent:IsPlayer() or ent:IsNPC()) then
 			if ent:GetNWBool("is_knocked_out", false) then return end
 
-			if dmginfo:GetDamageType() == DMG_CLUB or dmginfo:GetDamageType() == DMG_SONIC or dmginfo:GetDamageType() == DMG_CRUSH then
+			if dmginfo:GetDamageType() == DMG_CRUSH then
+				-- Halve the physical damage in exchange for double psyche damage
 				local psyche = ent:GetNWFloat("psyche", 100)
-				psyche = psyche - dmginfo:GetDamage() * 2
+				local multiplier = GetConVar("mgs4_psyche_physics_mutliplier"):GetFloat()
+				local disable_physics_dmg = multiplier < 0
+
+				-- Negative multiplier just means only damage the psyche. So we turn it back to positive.
+				if disable_physics_dmg then
+					multiplier = math.abs(multiplier)
+				end
+
+				local psyche_dmg = dmginfo:GetDamage() * multiplier
+
+				psyche = psyche - psyche_dmg
 				ent:SetNWFloat("psyche", math.max(psyche, 0)) -- Cap at 0
-				ent:SetNWInt("last_nonlethal_damage_type", 1) -- For testing purposes, to change later.
+				ent:SetNWInt("last_nonlethal_damage_type", multiplier)
+
+				-- Knockback animations depending on psyche damage
+				local damageDir = (ent:GetPos() - dmginfo:GetDamagePosition()):GetNormalized()
+				local angleAround = math.deg(math.atan2(damageDir.y, damageDir.x))
+				
+				-- Convert to player-relative angle
+				local playerAngle = ent:EyeAngles().y
+				local relativeAngle = math.NormalizeAngle(angleAround - playerAngle)
+
+				if psyche_dmg >= 10 and psyche_dmg < 50 then
+					if ent:Crouching() then
+						-- Only front/back knockback when crouched
+						if math.abs(relativeAngle) <= 90 then
+							ent:PlayMGS4Animation("mgs4_knockback_small_back_crouched", nil, true)
+						else
+							ent:PlayMGS4Animation("mgs4_knockback_small_front_crouched", nil, true)
+						end
+					else
+						-- Only front/back knockback when standing
+						if math.abs(relativeAngle) <= 90 then
+							ent:PlayMGS4Animation("mgs4_knockback_small_back", nil, true)
+						else
+							ent:PlayMGS4Animation("mgs4_knockback_small_front", nil, true)
+						end
+					end
+				elseif psyche_dmg >= 50 then
+					if math.abs(relativeAngle) <= 90 then
+						ent:PlayMGS4Animation("mgs4_knockback_big_back", nil, true)
+						ent:SetNWInt("last_nonlethal_damage_type", 3)
+					else
+						ent:PlayMGS4Animation("mgs4_knockback_big_front", nil, true)
+						ent:SetNWInt("last_nonlethal_damage_type", 0)
+					end
+				end
+
+				if disable_physics_dmg then return true end
+				dmginfo:SetDamage( dmginfo:GetDamage() / 2 )
 			end
 		end
 	end)
@@ -1254,7 +1302,7 @@ if SERVER then
 			end
 
 			-- Hold the button for CQC Throw and Grab
-			if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == Entity(0) and not entity:GetNWBool("animation_playing", false) then
+			if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == NULL and not entity:GetNWBool("animation_playing", false) then
 				entity:SetNWBool("cqc_button_held", false)
 				entity:SetNWFloat("cqc_button_hold_time", 0)
 				entity:Cqc_check()
@@ -1266,9 +1314,9 @@ if SERVER then
 			elseif not entity:GetNWBool("is_using", false) and entity:GetNWBool("helping_up", false) and not entity:GetNWBool("animation_playing", false) then
 				entity:PlayMGS4Animation("mgs4_wakeup_end", function()
 					entity:SetNWBool("helping_up", false)
-					if entity:GetNWEntity("holster_weapon", Entity(0)) ~= Entity(0) then
-						entity:SetActiveWeapon(entity:GetNWEntity("holster_weapon", Entity(0)))
-						entity:SetNWEntity("holster_weapon", Entity(0))
+					if entity:GetNWEntity("holster_weapon", NULL) ~= NULL then
+						entity:SetActiveWeapon(entity:GetNWEntity("holster_weapon", NULL))
+						entity:SetNWEntity("holster_weapon", NULL)
 					end
 				end, false)
 			end
@@ -1292,7 +1340,7 @@ if SERVER then
 				end
 			end
 
-			if entity:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) then
+			if entity:GetNWEntity("cqc_grabbing", NULL) ~= NULL then
 				entity:Cqc_loop()
 			end
 
@@ -1318,10 +1366,25 @@ if SERVER then
 			end
 		end
 	end)
+
+	-- Trouble in terrorist town specific hooks
+	hook.Add("TTTOrderedEquipment", "MGS4TTTOrderedEquipment", function(ply, equipment, is_item)
+		if equipment == EQUIP_MGS4_BLADES_3 then
+			ply:SetNWInt("blades", 3)
+		elseif equipment == EQUIP_MGS4_CQC_EX then
+			ply:SetNWInt("cqc_level", 4)
+		elseif equipment == EQUIP_MGS4_CQC_PLUS_3 then
+			ply:SetNWInt("cqc_level", 3)
+		elseif equipment == EQUIP_MGS4_SCANNER_3 then
+			ply:SetNWInt("scanner", 3)
+		end
+	end)
 else
 	-- === Camera ===
 	hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
-		local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
+		local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
+
+		if ply:Team() == TEAM_SPECTATOR or ply:Team() == TEAM_UNASSIGNED then return end
 
 		if is_in_anim == false then return end
 
@@ -1589,10 +1652,10 @@ end
 
 -- === Handling buttons while grabbing ===
 hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
-	if ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("is_aiming", false) and not ply:GetNWBool("is_knife", false) then
+	if ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false) and not ply:GetNWBool("is_knife", false) then
 		cmd:RemoveKey(IN_ATTACK)
 		cmd:RemoveKey(IN_RELOAD)
-	elseif ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and ply:GetNWBool("is_aiming", false) then
+	elseif ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and ply:GetNWBool("is_aiming", false) then
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_FORWARD)
 		cmd:RemoveKey(IN_BACK)
@@ -1613,6 +1676,8 @@ end)
 hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 	if IsValid(ply) == false or not ply:IsPlayer() then return end
 
+	if ply:Team() == TEAM_SPECTATOR or ply:Team() == TEAM_UNASSIGNED then return end
+
 	if ply:GetNWBool("is_knocked_out", false) then
 		-- == Knockout loop ==
 		local knockout_type = ply:GetNWInt("last_nonlethal_damage_type", 0)
@@ -1628,9 +1693,9 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 		ply:SetCycle(CurTime() % 1)
 
 		return -1, knockout_anim
-	elseif ply:GetNWEntity("cqc_grabbing", Entity(0)) ~= Entity(0) and not ply:GetNWBool("animation_playing", false) then
+	elseif ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("animation_playing", false) then
 		-- == CQC grab loop ==
-		local target = ply:GetNWEntity("cqc_grabbing", Entity(0))
+		local target = ply:GetNWEntity("cqc_grabbing", NULL)
 		
 		if not IsValid(target) or not target:IsPlayer() then return end
 		

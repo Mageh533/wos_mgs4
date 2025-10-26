@@ -12,6 +12,20 @@ CreateConVar(
 	"How much psyche is recovered when the player presses the action button"
 )
 CreateConVar(
+	"mgs4_psyche_physics_damage",
+	"1",
+	{ FCVAR_SERVER_CAN_EXECUTE, FCVAR_REPLICATED, FCVAR_ARCHIVE },
+	"Should physics damage cause psyche damage as well?",
+	0,
+	1
+)
+CreateConVar(
+	"mgs4_psyche_physics_mutliplier",
+	"2",
+	{ FCVAR_SERVER_CAN_EXECUTE, FCVAR_REPLICATED, FCVAR_ARCHIVE },
+	"Physics damage will be reduced in exchange for dealing damage to the psyche (for example a value of 2 would halve physics dmg and double psyche dmg). Negative numbers would disable physical dmg and only damage the psyche."
+)
+CreateConVar(
 	"mgs4_base_cqc_level",
 	"0",
 	{ FCVAR_SERVER_CAN_EXECUTE, FCVAR_REPLICATED, FCVAR_ARCHIVE },
@@ -28,7 +42,9 @@ CreateConVar(
 	"mgs4_show_psyche_hud",
 	"1",
 	{ FCVAR_SERVER_CAN_EXECUTE, FCVAR_REPLICATED, FCVAR_ARCHIVE },
-	"Show the psyche in the HUD, generally recommended to be off in TTT since it would be too obvious when someone is using tranquilizers"
+	"Show the psyche in the HUD, generally recommended to be off in TTT since it would be too obvious when someone is using tranquilizers",
+	0,
+	1
 )
 
 -- === Client convars ===
