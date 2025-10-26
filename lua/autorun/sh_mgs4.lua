@@ -217,7 +217,7 @@ if SERVER then
 
 		self:PlayMGS4Animation("mgs4_knocked_back", function()
 			if self:GetNWFloat("psyche", 100) > 0 then
-				self:GetUp()
+				self:StandUp()
 			end
 			self:ForcePosition(false)
 		end, true)
@@ -225,7 +225,7 @@ if SERVER then
 		self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 	end
 
-	function ent:GetUp()
+	function ent:StandUp()
 		if not self then return end
 
 		self:ForcePosition(true, self:GetPos(), self:EyeAngles())
@@ -445,8 +445,6 @@ if SERVER then
 		scanner_ent:SetLocalAngles(Angle(100, 90, 0))
 		scanner_ent:Spawn()
 
-		print(scanner_ent)
-
 		-- Temporarily remove weapon from player until scan is complete
 		local current_weapon = self:GetActiveWeapon()
 		if IsValid(current_weapon) then
@@ -494,7 +492,7 @@ if SERVER then
 				target:SetNWFloat("psyche", target_psyche - stun_damage)
 
 				if target:GetNWFloat("psyche", 100) > 0 then
-					target:GetUp()
+					target:StandUp()
 				end
 
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
@@ -526,7 +524,7 @@ if SERVER then
 				target:SetNWFloat("psyche", target_psyche - stun_damage)
 
 				if target:GetNWFloat("psyche", 100) > 0 then
-					target:GetUp()
+					target:StandUp()
 				end
 
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
@@ -599,7 +597,7 @@ if SERVER then
 				target:SetEyeAngles(target:EyeAngles() + Angle(0, 180, 0))
 
 				if target:GetNWFloat("psyche", 100) > 0 then
-					target:GetUp()
+					target:StandUp()
 				end
 
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
@@ -652,7 +650,7 @@ if SERVER then
 			self:SetNWFloat("psyche", psyche - stun_damage)
 
 			if self:GetNWFloat("psyche", 100) > 0 then
-				self:GetUp()
+				self:StandUp()
 			end
 
 			self:ForcePosition(false)
@@ -1051,7 +1049,7 @@ if SERVER then
 			if entity:GetNWInt("last_nonlethal_damage_type", 0) ~= 1 then
 				entity:EmitSound("sfx/stars.wav", 75, 100, 1, CHAN_VOICE)
 			end
-			entity:GetUp()
+			entity:StandUp()
 		else
 			entity:SetNWBool("animation_playing", true)
 			entity:SetVelocity(-entity:GetVelocity())
@@ -1226,7 +1224,6 @@ if SERVER then
 
 				psyche = psyche - psyche_dmg
 				ent:SetNWFloat("psyche", math.max(psyche, 0)) -- Cap at 0
-				ent:SetNWInt("last_nonlethal_damage_type", multiplier)
 
 				-- Knockback animations depending on psyche damage
 				local damageDir = (ent:GetPos() - dmginfo:GetDamagePosition()):GetNormalized()
@@ -1252,12 +1249,21 @@ if SERVER then
 							ent:PlayMGS4Animation("mgs4_knockback_small_front", nil, true)
 						end
 					end
+					ent:SetNWInt("last_nonlethal_damage_type", 2)
 				elseif psyche_dmg >= 50 then
 					if math.abs(relativeAngle) <= 90 then
-						ent:PlayMGS4Animation("mgs4_knockback_big_back", nil, true)
+						ent:PlayMGS4Animation("mgs4_knockback_big_back", function () 
+							if psyche > 0 then
+								ent:StandUp()
+							end
+						end, true)
 						ent:SetNWInt("last_nonlethal_damage_type", 3)
 					else
-						ent:PlayMGS4Animation("mgs4_knockback_big_front", nil, true)
+						ent:PlayMGS4Animation("mgs4_knockback_big_front", function ()
+							if psyche > 0 then
+								ent:StandUp()
+							end
+						end, true)
 						ent:SetNWInt("last_nonlethal_damage_type", 0)
 					end
 				end
