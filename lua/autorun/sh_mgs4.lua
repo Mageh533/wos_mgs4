@@ -1384,7 +1384,7 @@ else
 	hook.Add( "CalcView", "MGS4Camera", function( ply, pos, angles, fov )
 		local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
 
-		if ply:Team() == TEAM_SPECTATOR or ply:Team() == TEAM_UNASSIGNED then return end
+		if ply:Team() == TEAM_SPECTATOR then return end
 
 		if is_in_anim == false then return end
 
@@ -1676,7 +1676,7 @@ end)
 hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 	if IsValid(ply) == false or not ply:IsPlayer() then return end
 
-	if ply:Team() == TEAM_SPECTATOR or ply:Team() == TEAM_UNASSIGNED then return end
+	if ply:Team() == TEAM_SPECTATOR then return end
 
 	if ply:GetNWBool("is_knocked_out", false) then
 		-- == Knockout loop ==
