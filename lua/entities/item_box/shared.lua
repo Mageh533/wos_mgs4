@@ -66,6 +66,7 @@ function ENT:SetPickup( type, item )
 
 		if _G.type(fn) == "function" then
 			self:SetNWString("pickup_text", fn(item[2]))
+			self:SetNWBool("can_pickup", true)
 		end
 
 	elseif type == 2 then
@@ -125,7 +126,31 @@ function ENT:StartTouch( ent )
 					local ammoType = wep:GetPrimaryAmmoType()
 					local ammoAmount = wep:GetMaxClip1()  -- Give 1 clip size worth of ammo
 
-					ent:GiveAmmo(ammoAmount, ammoType)
+					local ammoMax = game.GetAmmoMax(ammoType)
+
+					if ammoType == -1 or ammoAmount == -1 then
+						-- Weapon does not use ammo (e.g., melee weapons) and the player already has it
+						self:EmitSound("sfx/full_ammo_item.wav",  100, 100, 1, CHAN_AUTO)
+						self:SetNWString("pickup_text", "SLOT FULL")
+						self:SetNWBool("can_pickup", false)
+						timer.Simple(1, function()
+							self:SetNWString("pickup_text", self.Item)
+							self:SetNWBool("can_pickup", true)
+						end)
+						return
+					elseif ent:GetAmmoCount(ammoType) >= ammoMax then
+						-- Player cannot have more ammo
+						self:EmitSound("sfx/full_ammo_item.wav",  100, 100, 1, CHAN_AUTO)
+						self:SetNWString("pickup_text", "AMMO FULL")
+						self:SetNWBool("can_pickup", false)
+						timer.Simple(1, function()
+							self:SetNWString("pickup_text", self.Item)
+							self:SetNWBool("can_pickup", true)
+						end)
+						return
+					else
+						ent:GiveAmmo(ammoAmount, ammoType)
+					end
 				else
 					ent:Give( self.Item )
 				end
@@ -147,8 +172,16 @@ end
 
 if not CLIENT then return end
 
--- Draw some 3D text
-local function Draw3DText( pos, scale, text)
+-- Client-side draw function for the Entity
+function ENT:Draw()
+    self:DrawModel() -- Draws the model of the Entity. This function is called every frame.
+
+	local text = self:GetNWString("pickup_text", "")
+
+	local mins, maxs = self:GetModelBounds()
+	local pos = self:GetPos() + Vector(0, 0, maxs.z + 5)
+
+	-- Draw 3d text
 	if LocalPlayer():GetPos():Distance(pos) > 256 then return end
 
 	local angle = ( pos - EyePos() ):GetNormalized():Angle()
@@ -160,18 +193,14 @@ local function Draw3DText( pos, scale, text)
 
 	cam.Start3D2D( pos, angle, 0.25 )  -- Reduced scale from 0.5 to 0.25
 		-- Actually draw the text with smaller font
-		draw.DrawText( text, "HudHintTextLarge", 0, 0, Color(255,255,0,255), TEXT_ALIGN_CENTER )
+		local colour = Color(255,255,0,255)
+		local offset = 0
+
+		if not self:GetNWBool("can_pickup", true) then
+			colour = Color(255,0,0,255)
+			offset = math.sin(CurTime() * 80) * 1 -- Creates a sine wave oscillation
+		end
+
+		draw.SimpleTextOutlined( text, "CloseCaption_Normal", offset, 0, colour, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0, 100) )
 	cam.End3D2D()
-end
-
--- Client-side draw function for the Entity
-function ENT:Draw()
-    self:DrawModel() -- Draws the model of the Entity. This function is called every frame.
-
-	local text = self:GetNWString("pickup_text", "")
-
-	local mins, maxs = self:GetModelBounds()
-	local pos = self:GetPos() + Vector(0, 0, maxs.z + 3)
-
-	Draw3DText(pos, 0.5, text)
 end
