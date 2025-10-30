@@ -403,6 +403,7 @@ if SERVER then
 			knifed_anim = "mgs4_grabbed_crouched_knife"
 		end
 
+		self:ForcePosition(true)
 		self:SetNWBool("is_in_cqc", true)
 		self:PlayMGS4Animation(knife_anim, function()
 			self:Cqc_reset()
@@ -414,8 +415,11 @@ if SERVER then
 				self:GetNWEntity("knife", NULL):Remove()
 				self:SetNWEntity("knife", NULL)
 			end
+
+			self:ForcePosition(false)
 		end, false)
 
+		self:ForcePosition(true, target:GetPos(), self:EyeAngles())
 		target:SetNWBool("is_in_cqc", true)
 		target:PlayMGS4Animation(knifed_anim, function()
 			target:SetNWBool("is_in_cqc", false)
@@ -423,6 +427,7 @@ if SERVER then
 			-- Just kill them lmao
 			target:TakeDamage(1000, self, self)
 
+			target:ForcePosition(false)
 		end, false)
 	end
 
@@ -451,6 +456,7 @@ if SERVER then
 			self:SetActiveWeapon(NULL)
 		end
 
+		self:ForcePosition(true)
 		self:PlayMGS4Animation(scan_anim, function()
 			-- Give back the weapon
 			if IsValid(current_weapon) then
@@ -458,10 +464,13 @@ if SERVER then
 			end
 			scanner_ent:Remove()
 			self:SetNWFloat("stuck_check", 0)
+			self:ForcePosition(false)
 		end, false)
 
+		target:ForcePosition(true, target:GetPos(), self:EyeAngles())
 		target:PlayMGS4Animation(scanned_anim, function()
 			target:SetNWFloat("stuck_check", 0)
+			target:ForcePosition(false)
 		end, false)
 	end
 
@@ -1252,7 +1261,7 @@ if SERVER then
 					ent:SetNWInt("last_nonlethal_damage_type", 2)
 				elseif psyche_dmg >= 50 then
 					if math.abs(relativeAngle) <= 90 then
-						ent:PlayMGS4Animation("mgs4_knockback_big_back", function () 
+						ent:PlayMGS4Animation("mgs4_knockback_big_back", function ()
 							if psyche > 0 then
 								ent:StandUp()
 							end
@@ -1391,7 +1400,7 @@ else
 		local is_in_anim = ply:GetNWBool("animation_playing", false) or (ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false)) or ply:GetNWFloat("cqc_punch_time_left", 0) > 0 or ply:GetNWBool("helping_up", false) or ply:GetNWBool("is_grabbed", false)
 
 		if ply:Team() == TEAM_SPECTATOR then return end
-
+		if GetViewEntity() ~= LocalPlayer() then return end
 		if is_in_anim == false then return end
 
 		local function hide_player_head(bool)
