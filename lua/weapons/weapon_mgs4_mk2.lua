@@ -37,8 +37,6 @@ function SWEP:Initialize()
 end
 
 function SWEP:Deploy()
-	self:SendWeaponAnim(ACT_VM_DRAW)
-
 	return true
 end
 
@@ -84,39 +82,67 @@ function SWEP:PrimaryAttack()
 	bullet.Dir = self:GetOwner():GetAimVector()
 	bullet.Spread = Vector(0, 0, 0)
 	bullet.Tracer = 1
-	bullet.Damage = 30
+	bullet.Damage = 20
 	bullet.Force = 1
 	bullet.AmmoType = self.Primary.Ammo
 
 	bullet.Callback = function(attacker, tr, dmginfo)
+		local psyche = tr.Entity:GetNWFloat("psyche", 100)
+
+		if tr.Entity:GetNWBool("is_knocked_out", false) or psyche <= 0 then dmginfo:SetDamage(0) return true end
+
 		if tr.HitGroup == HITGROUP_HEAD then
-			dmginfo:ScaleDamage(4) -- x4 headshots
+			dmginfo:ScaleDamage(10) -- Headshot should instantly knock out
+			tr.Entity:EmitSound( "sfx/headshot.wav" )
+		elseif tr.HitGroup == HITGROUP_CHEST or tr.HitGroup == HITGROUP_STOMACH then
+			dmginfo:ScaleDamage(2)
 		end
 
-		if tr.Entity:GetNWBool("is_knocked_out", false) then dmginfo:SetDamage(0) return true end
-
-		local psyche = tr.Entity:GetNWFloat("psyche", 100)
 		local psyche_dmg = dmginfo:GetDamage()
 
 		psyche = psyche - psyche_dmg
 
 		tr.Entity:SetNWFloat("psyche", psyche)
-		tr.Entity:SetNWFloat("psyche", math.max(psyche, 0)) -- Cap at 0
 
 		tr.Entity:SetNWInt("last_nonlethal_damage_type", 1)
 
 		dmginfo:SetDamage(0)
+
+		-- Drain some additional psyche over time
+		if SERVER then
+			hook.Add("Tick", "MGS4DrainPsycheFrom" .. tr.Entity:EntIndex(), function ()
+				local ent_psyche = tr.Entity:GetNWFloat("psyche", 100)
+
+				-- If they are knocked out then stop the drain early
+				if tr.Entity:GetNWBool("is_knocked_out", false) or ent_psyche <= 0 then
+					hook.Remove("Tick", "MGS4DrainPsycheFrom" .. tr.Entity:EntIndex())
+					return
+				end
+
+				local psyche_drain = 2 * FrameTime()
+			
+				ent_psyche = ent_psyche - psyche_drain
+
+				tr.Entity:SetNWInt("last_nonlethal_damage_type", 1)
+
+				tr.Entity:SetNWFloat("psyche", ent_psyche)
+			end)
+
+			timer.Simple(10, function ()
+				hook.Remove("Tick", "MGS4DrainPsycheFrom" .. tr.Entity:EntIndex())
+			end)
+		end
 	end
 
 	self:GetOwner():FireBullets(bullet)
 
 	self:TakePrimaryAmmo( 1 )
 
-	timer.Simple(0.2, function()
+	timer.Simple(0.4, function()
 		if IsValid(self) and self:GetOwner():GetActiveWeapon() == self then
 			self:EmitSound("weapons/mk2/rugermk2_chamber.wav")
 		end
 	end)
 
-	self:SetNextPrimaryFire( CurTime() + 1 )
+	self:SetNextPrimaryFire( CurTime() + 1.5 )
 end
