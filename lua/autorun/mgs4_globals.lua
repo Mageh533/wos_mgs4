@@ -106,3 +106,12 @@ Ability_names = {
 		return "SCANNER " .. lvl
 	end
 }
+
+Ammo_types = {
+	["mk2"] = "BULLET_MK2_TRANQ"
+}
+
+if not CLIENT then return end
+
+-- Locale strings
+language.Add("BULLET_MK2_TRANQ_ammo", "MK.2 Tranquiler rounds")

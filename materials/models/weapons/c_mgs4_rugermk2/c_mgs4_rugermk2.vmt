@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/weapons/c_mgs4_rugermk2/c_mgs4_rugermk2"
+	"$normalmap" "models/weapons/c_mgs4_rugermk2/c_mgs4_rugermk2_n"
+}

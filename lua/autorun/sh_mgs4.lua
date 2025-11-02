@@ -1665,6 +1665,22 @@ else
 	end )
 end
 
+
+-- Initialization. Set the ammo types and stuff.
+hook.Add("Initialize", "MGS4Init", function ()
+	game.AddAmmoType( {
+		name = Ammo_types["mk2"],
+		dmgtype = DMG_POISON, 
+		tracer = TRACER_NONE,
+		plydmg = 0,
+		npcdmg = 0,
+		force = 0,
+		maxcarry = 60,
+		minsplash = 10,
+		maxsplash = 5
+	} )
+end)
+
 -- === Handling buttons while grabbing ===
 hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 	if ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false) and not ply:GetNWBool("is_knife", false) then
