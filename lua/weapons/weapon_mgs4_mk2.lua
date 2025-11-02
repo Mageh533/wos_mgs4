@@ -33,7 +33,7 @@ SWEP.WorldModel				= "models/weapons/c_mgs4_rugermk2.mdl"
 SWEP.UseHands				= true
 
 function SWEP:Initialize()
-    self:SetWeaponHoldType("revolver") -- Two handed
+    self:SetHoldType("revolver") -- Two handed
 end
 
 function SWEP:Deploy()
