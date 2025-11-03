@@ -53,6 +53,10 @@ function SWEP:Reload()
 
 	self:DefaultReload( ACT_VM_RELOAD )
 
+	local tp_reload_anim = self:GetOwner():LookupSequence("mgs4_mk2luger_reload")
+
+	self:GetOwner():AddVCDSequenceToGestureSlot(GESTURE_SLOT_ATTACK_AND_RELOAD, tp_reload_anim, 0, true)
+
 	self:EmitSound("weapons/mk2/rugermk2_reload_start.wav")
 
 	timer.Simple(0.7, function()
@@ -71,10 +75,15 @@ function SWEP:PrimaryAttack()
 
 	-- Play shoot sound
 	self:EmitSound( "weapons/mk2/rugermk2_shoot.wav" )
-
-    -- Play shooting animation
+	
+    -- Play FP shooting animation
     self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
     self:GetOwner():SetAnimation(PLAYER_ATTACK1)
+
+	-- Play TP shooting animations
+	local tp_reload_anim = self:GetOwner():LookupSequence("mgs4_mk2luger_shoot")
+
+	self:GetOwner():AddVCDSequenceToGestureSlot(GESTURE_SLOT_ATTACK_AND_RELOAD, tp_reload_anim, 0, true)
 
 	local bullet = {}
 	bullet.Num = 1
@@ -145,4 +154,8 @@ function SWEP:PrimaryAttack()
 	end)
 
 	self:SetNextPrimaryFire( CurTime() + 1.5 )
+end
+
+function SWEP:Think()
+	
 end
