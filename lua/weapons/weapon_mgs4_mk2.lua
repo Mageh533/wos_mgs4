@@ -155,7 +155,3 @@ function SWEP:PrimaryAttack()
 
 	self:SetNextPrimaryFire( CurTime() + 1.5 )
 end
-
-function SWEP:Think()
-	
-end
