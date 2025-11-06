@@ -6,16 +6,16 @@ A CQC system recreation based on MGS4/MGO2
 
 TODO:
 
-1. Correct CQC grab anims when not at +3
-2. Fix third person anims for the mk2
-3. Prone choke
-4. Prone addon support
-5. NPC Support.
+1. Prone choke
+2. Grab reload anim.
+3. NPC Support.
 
 EXTRAS:
 
-1. Mosin nagant.
-2. Magazines.
-3. Sleep mines.
-4. Other skills.
-5. Chaff and Stun grenades.
+1. Prone addon support
+2. Mosin nagant.
+3. Third person anims for the mk2.
+4. Magazines.
+5. Sleep mines.
+6. Other skills.
+7. Chaff and Stun grenades.

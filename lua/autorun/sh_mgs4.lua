@@ -681,6 +681,9 @@ if SERVER then
 		-- Find out if grabbing from front or back
 		local angleAround = self:AngleAroundTarget(target)
 
+		-- Animation different on higher levels
+		local cqc_level = self:GetNWInt("cqc_level", 0)
+
 		local grab_anim
 		local grabbed_anim
 		local angle_offset = Angle(0,0,0)
@@ -690,6 +693,9 @@ if SERVER then
 			local grab_standing_anim = "mgs4_grab_behind"
 			local grabbed_standing_anim = "mgs4_grabbed_behind"
 
+			local grab_standing_alt_anim = "mgs4_grab_behind_alt"
+			local grabbed_standing_alt_anim = "mgs4_grabbed_behind_alt"
+
 			local grab_crouched_anim = "mgs4_grab_crouched_behind"
 			local grabbed_crouched_anim = "mgs4_grabbed_crouched_behind"
 
@@ -697,13 +703,21 @@ if SERVER then
 				grab_anim = grab_crouched_anim
 				grabbed_anim = grabbed_crouched_anim
 			else
-				grab_anim = grab_standing_anim
-				grabbed_anim = grabbed_standing_anim
+				if cqc_level >= 3 then
+					grab_anim = grab_standing_anim
+					grabbed_anim = grabbed_standing_anim
+				else
+					grab_anim = grab_standing_alt_anim
+					grabbed_anim = grabbed_standing_alt_anim
+				end
 			end
 		else
 			-- Grabbing from front
 			local grab_standing_anim = "mgs4_grab_front"
 			local grabbed_standing_anim = "mgs4_grabbed_front"
+
+			local grab_standing_alt_anim = "mgs4_grab_front_alt"
+			local grabbed_standing_alt_anim = "mgs4_grabbed_front_alt"
 
 			local grab_crouched_anim = "mgs4_grab_crouched_front"
 			local grabbed_crouched_anim = "mgs4_grabbed_crouched_front"
@@ -712,8 +726,13 @@ if SERVER then
 				grab_anim = grab_crouched_anim
 				grabbed_anim = grabbed_crouched_anim
 			else
-				grab_anim = grab_standing_anim
-				grabbed_anim = grabbed_standing_anim
+				if cqc_level >= 3 then
+					grab_anim = grab_standing_anim
+					grabbed_anim = grabbed_standing_anim
+				else
+					grab_anim = grab_standing_alt_anim
+					grabbed_anim = grabbed_standing_alt_anim
+				end
 			end
 
 			angle_offset = Angle(0,180,0)
@@ -734,7 +753,9 @@ if SERVER then
 		
 		-- Make them drop their weapon in an item box
 		if self:GetNWInt("cqc_level", 0) >= 3 then
-			target:DropWeaponAsItem()
+			timer.Simple(1.7, function ()
+				target:DropWeaponAsItem()
+			end)
 		end
 
 		if self:Crouching() then
