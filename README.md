@@ -6,9 +6,8 @@ A CQC system recreation based on MGS4/MGO2
 
 TODO:
 
-1. Prone choke
-2. Grab reload anim.
-3. NPC Support.
+1. Grab reload anim.
+2. NPC Support.
 
 EXTRAS:
 

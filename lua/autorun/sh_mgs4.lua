@@ -59,11 +59,11 @@ end
 function ent:TraceForTarget()
 	if not self then return end
 
-	local start_pos = self:GetPos() + Vector(0, 0, 40) -- Start slightly above ground
+	local start_pos = self:GetPos()
 	local end_pos = start_pos + (self:GetForward() * 32)
 
-	local mins = Vector(-16, -16, 0)
-	local maxs = Vector(16, 16, 72)
+	local mins = self:OBBMins()
+	local maxs = self:OBBMaxs()
 
 	local tr = util.TraceHull({
 		start = start_pos,
@@ -177,6 +177,8 @@ if SERVER then
 	function ent:Knockout()
 		if not self then return end
 
+		local was_t_choked = self:GetNWBool("is_t_choking")
+
 		self:Cqc_reset()
 
 		local knockout_type = self:GetNWInt("last_nonlethal_damage_type", 0)
@@ -184,17 +186,22 @@ if SERVER then
 
 		local knockout_anim
 
-		if knockout_type == 1 then
-			if crouched then
-				knockout_anim = "mgs4_sleep_crouched"
-			else
-				knockout_anim = "mgs4_sleep"
-			end
-		elseif knockout_type == 2 then
-			if crouched then
-				knockout_anim = "mgs4_stun_crouched"
-			else
-				knockout_anim = "mgs4_stun"
+		if was_t_choked then
+			-- Nasty exception
+			knockout_anim = "mgs4_grabbed_crouched_tchoke_end"
+		else
+			if knockout_type == 1 then
+				if crouched then
+					knockout_anim = "mgs4_sleep_crouched"
+				else
+					knockout_anim = "mgs4_sleep"
+				end
+			elseif knockout_type == 2 then
+				if crouched then
+					knockout_anim = "mgs4_stun_crouched"
+				else
+					knockout_anim = "mgs4_stun"
+				end
 			end
 		end
 
@@ -940,8 +947,6 @@ if SERVER then
 		target:SetNWFloat("grab_escape_progress", math.max(target:GetNWFloat("grab_escape_progress", 100) - ((1 / self:GetNWInt("cqc_level", 1)) * FrameTime() * 25), 0))
 
 		self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Crouch hull to standing height to teleporting up when ducking in animations
-
-		print(target:GetNWFloat("grab_escape_progress"))
 
 		if self:GetNWBool("is_grabbed_crouched", false) then
 			self:SetViewOffset(Vector(0, 0, 36)) -- Set crouch view offset
