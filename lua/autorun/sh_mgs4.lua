@@ -1527,6 +1527,26 @@ else
 		return view
 	end )
 
+	-- == First person adjustments while grabbing ==
+
+	hook.Add("PostDrawViewModel", "MGS4FirstPersonAdjustments", function (vm, ply, wpn)
+		if not IsValid(vm) then return end
+
+		for _, boneName in ipairs(Bones_to_hide) do
+			local bone = vm:LookupBone(boneName)
+			if bone then
+				local nan = 0/0
+				if ply:GetNWBool("is_aiming") then
+					-- Hide the bone
+					vm:ManipulateBoneScale(bone, Vector(nan,nan,nan))
+				else
+					-- Reset the bone to normal
+					vm:ManipulateBoneScale(bone, Vector(1,1,1))
+				end
+			end
+		end
+	end)
+
 	surface.CreateFont("MGS4HudNumbers", {
 		font = "Tahoma",
 		size = math.max(1, 72 * (ScrH() / 1080)),
