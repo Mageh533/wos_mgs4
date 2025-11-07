@@ -6,8 +6,7 @@ A CQC system recreation based on MGS4/MGO2
 
 TODO:
 
-1. Grab reload anim.
-2. NPC Support.
+1. NPC Support.
 
 EXTRAS:
 

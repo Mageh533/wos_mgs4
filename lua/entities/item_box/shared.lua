@@ -27,7 +27,7 @@ function ENT:Initialize()
 
 		self.PickupType = 0
 		self.Item = nil
-		self.UnpickableTime = CurTime() + 2.0  -- Reset unpickable time on initialize
+		self.UnpickableTime = CurTime() + 0.5  -- Reset unpickable time on initialize
 
 		local phys = self:GetPhysicsObject()
 		if IsValid(phys) then
