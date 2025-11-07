@@ -1770,6 +1770,35 @@ hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 	end
 end)
 
+-- === Overriding anims like reload ===
+hook.Add("DoAnimationEvent", "MGS4AnimsOverride", function (ply, event, data)
+	if IsValid(ply) == false or not ply:IsPlayer() then return end
+
+	if ply:Team() == TEAM_SPECTATOR then return end
+
+	if event == PLAYERANIMEVENT_RELOAD and ply:GetNWBool("is_aiming") and not ply:GetNWBool("animation_playing") then
+		local reload_anim
+
+		if ply:GetNWBool("is_grabbed_crouched", false) then
+			reload_anim = "mgs4_grab_crouched_reload"
+		else
+			reload_anim = "mgs4_grab_reload"
+		end
+
+		local seq = ply:LookupSequence(reload_anim)
+
+		ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_ATTACK_AND_RELOAD, seq, 0, true)
+
+		return ACT_INVALID
+	end
+end)
+
+hook.Add("PlayerPostThink", "MGS4StopGesturesOnAnims", function (ply)
+	if ply:GetNWBool("animation_playing") then
+		ply:AnimResetGestureSlot(GESTURE_SLOT_ATTACK_AND_RELOAD)
+	end
+end)
+
 -- === Animation Handling for players ===
 hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 	if IsValid(ply) == false or not ply:IsPlayer() then return end
