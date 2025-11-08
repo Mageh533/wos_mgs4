@@ -159,8 +159,6 @@ function ENT:StartTouch( ent )
 		end
 
 		self:Remove()
-	else
-		self:EmitSound("sfx/full_ammo_item.wav",  100, 100, 1, CHAN_AUTO)
 	end
 end
 
@@ -182,7 +180,7 @@ function ENT:Draw()
 	local pos = self:GetPos() + Vector(0, 0, maxs.z + 5)
 
 	-- Draw 3d text
-	if LocalPlayer():GetPos():Distance(pos) > 256 then return end
+	if LocalPlayer():GetPos():Distance(pos) > 128 then return end
 
 	local angle = ( pos - EyePos() ):GetNormalized():Angle()
 
