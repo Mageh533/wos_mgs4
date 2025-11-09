@@ -50,7 +50,7 @@ CreateConVar(
 -- === Client convars ===
 CreateClientConVar(
 	"mgs4_cqc_button",
-	"110",
+	"0",
 	true,
 	true,
 	"This is the BUTTON_CODE which handles the CQC button. If you don't know what this means, just use the mgs4_config command to set your button there."
@@ -112,6 +112,74 @@ Ammo_types = {
 }
 
 if not CLIENT then return end
+
+-- the mgs4_config command to set up the cqc key
+local function OpenCQCKeySetup()
+    local frame = vgui.Create("DFrame")
+    frame:SetSize(400, 220)
+    frame:Center()
+    frame:SetTitle("Set Your CQC Key")
+    frame:MakePopup()
+
+    local label = vgui.Create("DLabel", frame)
+    label:SetPos(20, 40)
+    label:SetWide(360)
+    label:SetWrap(true)
+    label:SetAutoStretchVertical(true)
+    label:SetText(
+        "Snake, try to remember some of the basics of CQC...\n\n" ..
+        "Press the button below, then press your preferred key to use CQC actions.\n\n" ..
+        "Note: This is not a normal bind, so it will not replace an existing bind. " ..
+        "Set it to a unique key."
+    )
+
+    -- Button to start listening
+    local startButton = vgui.Create("DButton", frame)
+    startButton:SetSize(150, 30)
+    startButton:SetPos(125, 150)
+    startButton:SetText("Press a key now")
+
+    local waitingForKey = false
+
+    startButton.DoClick = function()
+        waitingForKey = true
+        startButton:SetText("Waiting for key...")
+    end
+
+    -- Capture key input
+    frame.OnKeyCodePressed = function(self, key)
+        if not waitingForKey then return end
+        waitingForKey = false
+
+        RunConsoleCommand("mgs4_cqc_button", tostring(key))
+        notification.AddLegacy("CQC key set to code: " .. key, NOTIFY_GENERIC, 5)
+
+        startButton:SetText("Press a key now")
+        frame:Close()
+    end
+
+    frame.OnMousePressed = function(self, key)
+        if not waitingForKey then return end
+        waitingForKey = false
+
+        RunConsoleCommand("mgs4_cqc_button", tostring(key))
+        notification.AddLegacy("CQC button set to code: " .. key, NOTIFY_GENERIC, 5)
+
+        startButton:SetText("Press a key now")
+        frame:Close()
+    end
+end
+
+-- You can run this via console or from a menu:
+concommand.Add("mgs4_config", OpenCQCKeySetup)
+
+-- Run setup automatically if the key hasn't been set
+timer.Simple(1, function()
+    local cqc_button = GetConVar("mgs4_cqc_button"):GetInt()
+    if cqc_button == 0 then
+        OpenCQCKeySetup()
+    end
+end)
 
 -- Bones to hide when aiming in first person
 Bones_to_hide = {

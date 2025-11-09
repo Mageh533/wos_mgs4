@@ -849,7 +849,7 @@ if SERVER then
 		
 		-- Make them drop their weapon in an item box
 		if self:GetNWInt("cqc_level", 0) >= 3 then
-			timer.Simple(1.7, function ()
+			timer.Simple(1.7 / speed_modifier, function ()
 				target:DropWeaponAsItem()
 			end)
 		end
@@ -1057,7 +1057,7 @@ if SERVER then
 		end
 
 		if self:GetNWBool("is_grabbed_crouched", false) then
-			self:SetViewOffset(Vector(0, 0, 36)) -- Set crouch view offset
+			self:SetViewOffset(Vector(0, 0, 42)) -- Set crouch view offset
 		else
 			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset
 		end
