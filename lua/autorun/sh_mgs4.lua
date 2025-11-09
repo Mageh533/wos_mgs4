@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-field
 local ent = FindMetaTable("Entity")
 
-function ent:PlayMGS4Animation(anim, callback, updatepos)
+function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 	if not self then return end
 
 	local current_anim = self:LookupSequence(anim)
@@ -17,9 +17,11 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 
 	local pos_to_set
 
+	local sp_modifier = speed and speed or 1
+
 	self:SetVelocity(-self:GetVelocity())
 
-	timer.Simple(duration, function()
+	timer.Simple(duration / sp_modifier, function()
 		if self:Alive() == false then return end
 
 		local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
@@ -37,11 +39,12 @@ function ent:PlayMGS4Animation(anim, callback, updatepos)
 
 	end)
 
-	self:EmitMGS4Sound(anim)
+	self:EmitMGS4Sound(anim, sp_modifier)
 
 	self:SetNWString('SVAnim', anim)
 	self:SetNWFloat('SVAnimDelay', select(2, self:LookupSequence(anim)))
 	self:SetNWFloat('SVAnimStartTime', CurTime())
+	self:SetNWFloat('SVAnimSpeed', sp_modifier)
 	self:SetCycle(0)
 
 	local delay = select(2, self:LookupSequence(anim))
@@ -539,6 +542,10 @@ if SERVER then
 			target_angles = target:EyeAngles()
 		end
 
+		local cqc_level = self:GetNWInt("cqc_level", 4)
+
+		local speed_modifier = 1 + (cqc_level / 4)
+
 		if direction == 1 then
 			-- Throw forward
 			self:SetNWBool("is_in_cqc", true)
@@ -546,7 +553,7 @@ if SERVER then
 			self:PlayMGS4Animation("mgs4_grab_throw_forward", function()
 				self:Cqc_reset()
 				self:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 
 			target:SetNWInt("last_nonlethal_damage_type", 3)
 			target:SetNWBool("is_in_cqc", true)
@@ -555,7 +562,6 @@ if SERVER then
 				target:Cqc_reset()
 
 				-- CQC level stun damage
-				local cqc_level = self:GetNWInt("cqc_level", 4)
 				local stun_damage = 10 * cqc_level
 
 				local target_psyche = target:GetNWFloat("psyche", 100)
@@ -570,7 +576,7 @@ if SERVER then
 
 				target:ForcePosition(false)
 
-			end, true)
+			end, true, speed_modifier)
 		elseif direction == 2 then
 			-- Throw backward
 			self:SetNWBool("is_in_cqc", true)
@@ -578,7 +584,7 @@ if SERVER then
 			self:PlayMGS4Animation("mgs4_grab_throw_backward", function()
 				self:Cqc_reset()
 				self:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 
 			target:SetNWInt("last_nonlethal_damage_type", 0)
 			target:SetNWBool("is_in_cqc", true)
@@ -587,7 +593,6 @@ if SERVER then
 				target:Cqc_reset()
 
 				-- CQC level stun damage
-				local cqc_level = self:GetNWInt("cqc_level", 4)
 				local stun_damage = 10 * cqc_level
 
 				local target_psyche = target:GetNWFloat("psyche", 100)
@@ -602,7 +607,7 @@ if SERVER then
 
 				target:ForcePosition(false)
 
-			end, true)
+			end, true, speed_modifier)
 		elseif direction == 3 then
 			-- Front with weapon
 			self:SetNWBool("is_in_cqc", true)
@@ -610,7 +615,7 @@ if SERVER then
 			self:PlayMGS4Animation("mgs4_cqc_throw_gun_front", function()
 				self:Cqc_reset()
 				self:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 
 			target:SetNWInt("last_nonlethal_damage_type", 0)
 			target:SetNWBool("is_in_cqc", true)
@@ -625,7 +630,7 @@ if SERVER then
 					target:SetAngles(target_angles + Angle(0, 270, 0))
 				end
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
-			end, true)
+			end, true, speed_modifier)
 		elseif direction == 4 then
 			-- Back with weapon
 			self:SetNWBool("is_in_cqc", true)
@@ -648,7 +653,7 @@ if SERVER then
 					target:SetAngles(target_angles + Angle(0, 270, 0))
 				end
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
-			end, true)
+			end, true, speed_modifier)
 		else
 			-- Normal throw
 			self:SetNWBool("is_in_cqc", true)
@@ -661,7 +666,7 @@ if SERVER then
 					self:SetAngles(self_angles + Angle(0, 90, 0))
 				end
 				self:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 
 			target:SetNWInt("last_nonlethal_damage_type", 0)
 			target:SetNWBool("is_in_cqc", true)
@@ -670,7 +675,6 @@ if SERVER then
 				target:Cqc_reset()
 
 				-- CQC level stun damage
-				local cqc_level = self:GetNWInt("cqc_level", 4)
 				local stun_damage = 25 * cqc_level if cqc_level < 1 then stun_damage = 25 end
 
 				local target_psyche = target:GetNWFloat("psyche", 100)
@@ -689,7 +693,7 @@ if SERVER then
 
 				target:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 				target:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 		end
 
 		if self:GetNWEntity("knife", NULL) ~= NULL then
@@ -768,6 +772,8 @@ if SERVER then
 		-- Animation different on higher levels
 		local cqc_level = self:GetNWInt("cqc_level", 0)
 
+		local speed_modifier = 1 + (cqc_level / 4)
+
 		local grab_anim
 		local grabbed_anim
 		local angle_offset = Angle(0,0,0)
@@ -833,13 +839,13 @@ if SERVER then
 			self:SetNWEntity("cqc_grabbing", target)
 			self:ForcePosition(false)
 			self:SetNWFloat("stuck_check", 0)
-		end, true)
+		end, true, speed_modifier)
 		target:ForcePosition(true, self:GetPos(), self_angles + angle_offset)
 		target:PlayMGS4Animation(grabbed_anim, function ()
 			target:SetNWBool("is_grabbed", true)
 			target:ForcePosition(false)
 			target:SetNWFloat("stuck_check", 0)
-		end, true)
+		end, true, speed_modifier)
 		
 		-- Make them drop their weapon in an item box
 		if self:GetNWInt("cqc_level", 0) >= 3 then
@@ -2042,9 +2048,10 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 		-- == All other animations ==
 		local str = ply:GetNWString('SVAnim')
 		local num = ply:GetNWFloat('SVAnimDelay')
+		local speed = ply:GetNWFloat('SVAnimSpeed')
 		local st = ply:GetNWFloat('SVAnimStartTime')
 		if str ~= "" then
-			ply:SetCycle((CurTime()-st)/num)
+			ply:SetCycle(((CurTime()-st)/num) * speed)
 			local current_anim = ply:LookupSequence(str)
 			return -1, current_anim
 		end
