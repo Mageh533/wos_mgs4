@@ -542,9 +542,17 @@ if SERVER then
 			target_angles = target:EyeAngles()
 		end
 
-		local cqc_level = self:GetNWInt("cqc_level", 4)
+		local cqc_level = self:GetNWInt("cqc_level", 0)
 
-		local speed_modifier = 1 + (cqc_level / 4)
+		local speed_multipliers = {
+			[0] = 1,
+			[1] = 1,
+			[2] = 1.2,
+			[3] = 1.4,
+			[4] = 1.6
+		}
+
+		local speed_modifier = speed_multipliers[cqc_level]
 
 		if direction == 1 then
 			-- Throw forward
@@ -772,7 +780,14 @@ if SERVER then
 		-- Animation different on higher levels
 		local cqc_level = self:GetNWInt("cqc_level", 0)
 
-		local speed_modifier = 1 + (cqc_level / 4)
+		local speed_multipliers = {
+			[1] = 1,
+			[2] = 1.25,
+			[3] = 2.25,
+			[4] = 2.50
+		}
+
+		local speed_modifier = speed_multipliers[cqc_level]
 
 		local grab_anim
 		local grabbed_anim
@@ -1376,6 +1391,9 @@ if SERVER then
 
 	hook.Add("DoPlayerDeath", "MGS4PlayerPreDeathCleanup", function(ply, attacker, dmg)
 		if ply:GetNWBool("cqc_grabbing", NULL) ~= NULL then
+			ply:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
+			ply:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
+			ply:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 			local target = ply:GetNWBool("cqc_grabbing", NULL)
 			target:Cqc_grab_letgo(1, target:GetNWBool("is_grabbed_crouched", false))
 		end
@@ -1733,7 +1751,7 @@ else
 		-- Psyche in Hud
 
 		if GetConVar("mgs4_show_psyche_hud"):GetBool() then
-			if GAMEMODE.Name == "Trouble in Terrorist Town" then
+			if GAMEMODE_NAME == "terrortown" then
 				-- TODO: Draw psyche in the same style as TTT's HUD
 			else
 				local psyche = ply:GetNWFloat("psyche", 0)
@@ -1776,10 +1794,54 @@ else
 	hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
 		local target = LocalPlayer():GetEyeTrace().Entity
 		if IsValid(target) and target:IsPlayer() then
-			if GAMEMODE_NAME == "Trouble in Terrorist Town" then
-				-- TODO: Draw psyche status text like health statuses are done in TTT (e.g., Awake, Tired, Half-sleep, Unconscious)
+			local psyche = target:GetNWFloat("psyche", 0)
+			if GAMEMODE_NAME == "terrortown" then
+				local status_text = ""
+				local status_color = Color(255, 205, 0, 255)
+
+				if target:GetNWBool("is_knocked_out", false) then
+					status_text = "Unconscious"
+					status_color = Color(255, 0, 230, 255)
+				else
+					if psyche > 80 then
+						status_text = "Alert"
+						status_color = Color(4, 255, 0, 255)
+					elseif psyche > 60 then
+						status_text = "Strained"
+						status_color = Color(0, 255, 180, 255)
+					elseif psyche > 40 then
+						status_text = "Tired"
+						status_color = Color(0, 123, 255, 255)
+					elseif psyche > 20 then
+						status_text = "Fatigued"
+						status_color = Color(0, 0, 255, 255)
+					else
+						status_text = "Exhausted"
+						status_color = Color(170, 0, 255, 255)
+					end
+				end
+
+				local x, y = ScrW() / 2, ScrH() / 2 + 91 -- default position
+
+				-- Only adjust position if LocalPlayer is Detective or Traitor AND target is a teammate/fellow traitor
+				local localRole = LocalPlayer():GetRole()
+				local targetRole = target:GetRole()
+
+				if (targetRole == ROLE_DETECTIVE or targetRole == ROLE_TRAITOR) then
+					if targetRole == ROLE_DETECTIVE or (localRole == ROLE_TRAITOR and targetRole == ROLE_TRAITOR) then
+						y = ScrH() / 2 + 111 -- adjusted position, between health and karma
+					end
+				end
+
+				draw.SimpleText(
+					status_text,
+					"TargetIDSmall",
+					x,
+					y,
+					status_color,
+					TEXT_ALIGN_CENTER
+				)
 			else
-				local psyche = target:GetNWFloat("psyche", 0)
 				draw.SimpleText(tostring(math.Round(psyche, 0)) .. "%", "TargetIDSmall", ScrW() / 2, ScrH() / 2 + 70, Color(255,205,0,255), TEXT_ALIGN_CENTER)
 			end
 		end
