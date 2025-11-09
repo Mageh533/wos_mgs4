@@ -11,6 +11,13 @@ function ent:EmitMGS4Sound(anim, speed)
         timer.Simple(0.8 / speed, function()
             self:EmitSound("sfx/thrown.wav", 75, 100, 1, CHAN_WEAPON)
         end)
+    elseif anim == "mgs4_cqc_countered" then
+        timer.Simple(0.1 / speed, function ()
+            self:EmitSound("sfx/cqc.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
+        timer.Simple(2 / speed, function()
+            self:EmitSound("sfx/thrown.wav", 75, 100, 1, CHAN_WEAPON)
+        end)
     elseif anim == "mgs4_cqc_fail" then
         timer.Simple(0.2 / speed, function()
             self:EmitSound("sfx/air.wav", 75, 100, 1, CHAN_WEAPON)
