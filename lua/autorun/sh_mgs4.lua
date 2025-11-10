@@ -1823,13 +1823,12 @@ else
 
 				local x, y = ScrW() / 2, ScrH() / 2 + 91 -- default position
 
-				-- Only adjust position if LocalPlayer is Detective or Traitor AND target is a teammate/fellow traitor
 				local localRole = LocalPlayer():GetRole()
 				local targetRole = target:GetRole()
 
 				if (targetRole == ROLE_DETECTIVE or targetRole == ROLE_TRAITOR) then
 					if targetRole == ROLE_DETECTIVE or (localRole == ROLE_TRAITOR and targetRole == ROLE_TRAITOR) then
-						y = ScrH() / 2 + 111 -- adjusted position, between health and karma
+						y = ScrH() / 2 + 111 -- adjusted position, after health and karma
 					end
 				end
 
