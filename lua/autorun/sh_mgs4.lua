@@ -1800,7 +1800,6 @@ else
 				local iconSize_h = 24
 
 				for i, item in ipairs(combo) do
-					print(type(item))
 					if type(item) == "IMaterial" then
 						surface.SetMaterial(item)
 						surface.SetDrawColor(255,255,255,255)
@@ -1895,6 +1894,37 @@ else
 					}
 
 					tip_actions = table.Add(tip_actions, grab_stand_actions)
+				end
+			end
+
+			local target = ply:TraceForTarget()
+
+			if target and IsValid(target) then
+				if target:GetNWBool("is_knocked_out", false) and ply:Crouching() then
+					local crouched_actions = {
+							{
+								icon = Helpup,
+								key = {
+									input.LookupBinding("+use") or "E"
+								}
+							}
+					}
+	
+					if ply:GetNWInt("scanner", 0) > 3 then
+						local scan_ex = {
+							{
+								icon = Scan_ex,
+								key = {
+									Cqc_button,
+									input.LookupBinding("+use") or "E"
+								}
+							}
+						}
+	
+						tip_actions = table.Add(tip_actions, scan_ex)
+					end
+	
+					tip_actions = table.Add(tip_actions, crouched_actions)
 				end
 			end
 
