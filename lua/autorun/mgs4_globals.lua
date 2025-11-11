@@ -65,6 +65,15 @@ CreateClientConVar("mgs4_show_skill_hud",
 	1
 )
 
+CreateClientConVar("mgs4_show_tips_hud",
+	"1",
+	true,
+	false,
+	"Show the tips on the HUD.",
+	0,
+	1
+)
+
 CreateClientConVar("mgs4_actions_in_thirdperson",
 	"1",
 	true,
@@ -206,3 +215,17 @@ Bones_to_hide = {
 
 -- Locale strings
 language.Add("BULLET_MK2_TRANQ_ammo", "MK.2 Tranquiler rounds")
+
+-- PNG Materials
+Star 				= Material( "sprites/mgs4_star.png" )
+Sleep 				= Material( "sprites/mgs4_z.png" )
+Cqc_button 			= Material( "sprites/cqc_button.png" )
+Cqc_throw_normal 	= Material( "sprites/cqc_throw_normal.png" )
+Cqc_throw_weapon 	= Material( "sprites/cqc_throw_weapon.png" )
+Grab_aim			= Material( "sprites/grab_aim.png" )
+Grab_choke_prone	= Material( "sprites/grab_choke_prone.png" )
+Grab_choke			= Material( "sprites/grab_choke.png" )
+Grab_knife			= Material( "sprites/grab_knife.png" )
+Grab_scan			= Material( "sprites/grab_scan.png" )
+Grab_throw_backward	= Material( "sprites/grab_throw_backward.png" )
+Grab_throw_forward	= Material( "sprites/grab_throw_forward.png" )

@@ -1789,6 +1789,167 @@ else
 				)
 			end
 		end
+
+		if GetConVar("mgs4_show_tips_hud"):GetBool() then
+			-- Tips to show
+			local tip_actions = {}
+
+			local function DrawKeyCombo(x, y, combo)
+				local offset = 0
+				local iconSize_w = 44
+				local iconSize_h = 24
+
+				for i, item in ipairs(combo) do
+					print(type(item))
+					if type(item) == "IMaterial" then
+						surface.SetMaterial(item)
+						surface.SetDrawColor(255,255,255,255)
+						surface.DrawTexturedRect(x + offset, y, iconSize_w, iconSize_h)
+						offset = offset + iconSize_w + 6
+					else
+						surface.SetTextColor(255,255,255,255)
+						surface.SetTextPos(x + offset, y + 4)
+						surface.DrawText(item)
+						local w,_ = surface.GetTextSize(item)
+						offset = offset + w + 6
+					end
+
+					if i < #combo then
+						surface.SetTextColor(255,255,255,200)
+						surface.SetTextPos(x + offset, y + 4)
+						surface.DrawText("+")
+						local w,_ = surface.GetTextSize("+")
+						offset = offset + w + 6
+					end
+				end
+			end
+
+			-- Grabbing tips
+			if ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("animation_playing", false) and not ply:GetNWBool("is_aiming", false) then
+				local grab_actions = {
+					{
+						icon = Grab_choke,
+						key = { Cqc_button }
+					},
+					{
+						icon = Grab_aim,
+						key = {	input.LookupBinding("+attack2") or "M2" }
+					}
+				}
+
+				tip_actions = table.Add(tip_actions, grab_actions)
+
+				if ply:GetNWInt("blades", 0) >= 3 then
+					local grab_knife_action = {
+						{
+							icon = Grab_knife,
+							key = {
+								Cqc_button,
+								input.LookupBinding("+use") or "E"
+							}
+						}
+					}
+
+					tip_actions = table.Add(tip_actions, grab_knife_action)
+				end
+
+				if ply:GetNWInt("scanner", 0) > 0 then
+					local grab_scan_action = {
+						{
+							icon = Grab_scan,
+							key = {	input.LookupBinding("+use") or "E" }
+						}
+					}
+
+					tip_actions = table.Add(tip_actions, grab_scan_action)
+				end
+
+				if ply:GetNWBool("is_grabbed_crouched") then
+					local grab_crouched_actions = {
+						{
+							icon = Grab_choke_prone,
+							key = {
+								Cqc_button,
+								input.LookupBinding("+back") or "S"
+							}
+						}
+					}
+
+					tip_actions = table.Add(tip_actions, grab_crouched_actions)
+				else
+					local grab_stand_actions = {
+						{
+							icon = Grab_throw_forward,
+							key = {
+								Cqc_button,
+								input.LookupBinding("+forward") or "W"
+							}
+						},
+						{
+							icon = Grab_throw_backward,
+							key = {
+								Cqc_button,
+								input.LookupBinding("+back") or "S"
+							}
+						}
+					}
+
+					tip_actions = table.Add(tip_actions, grab_stand_actions)
+				end
+			end
+
+			surface.SetFont("Trebuchet24")
+
+			local startY = ScrH() * 0.70
+			local spacing = 160
+			local icon_size = 128
+
+			-- Calculate total width of all icons
+			local totalWidth = (#tip_actions * spacing)
+
+			-- Starting X so whole group is centered
+			local startX = (ScrW() / 2) - (totalWidth / 2)
+
+			for i, action in ipairs(tip_actions) do
+				local x = startX + (i - 1) * spacing
+
+				-- Draw icon
+				surface.SetMaterial(action.icon)
+
+				surface.SetDrawColor(235, 153, 59, 255)
+
+				if action.icon == Grab_knife then
+					surface.SetDrawColor(205, 25, 25, 255)
+				end
+
+				surface.DrawTexturedRect(x, startY + 10, icon_size, icon_size)
+
+				-- Draw key combo ABOVE, centered relative to the icon
+				if action.key then
+					local combo = istable(action.key) and action.key or { action.key }
+
+					-- measure combo width
+					local comboW = 0
+					for _, item in ipairs(combo) do
+						if type(item) == "IMaterial" then
+							comboW = comboW + 44 + 6
+						else
+							local w = surface.GetTextSize(item)
+							comboW = comboW + w + 6
+						end
+
+						-- plus sign width if not last
+						if _ < #combo then
+							comboW = comboW + surface.GetTextSize("+") + 6
+						end
+					end
+
+					local comboX = x + (icon_size / 2) - (comboW / 2)
+					DrawKeyCombo(comboX, startY - 20, combo)
+				end
+			end
+
+		end
 	end)
 
 	hook.Add("HUDDrawTargetID", "MGS4PsycheTarget", function ()
@@ -1889,8 +2050,6 @@ else
 
 	end )
 
-	local star = Material( "sprites/mgs4_star.png" )
-	local sleep = Material( "sprites/mgs4_z.png" )
 	hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function()
 		for _, ent in ipairs( ents.GetAll() ) do
 			local is_knocked_out = ent:GetNWBool("is_knocked_out", false)
@@ -1907,7 +2066,7 @@ else
 						local time = CurTime() * 3 + ( math.pi * 2 / stars * i )
 						local offset = Vector( math.sin( time ) * 5, math.cos( time ) * 5, 10 )
 
-						render.SetMaterial( star )
+						render.SetMaterial( Star )
 						render.DrawSprite( attach.Pos + offset, 5, 5, Color( 255, 215, 94 ) )
 					end
 				end
@@ -1927,7 +2086,7 @@ else
 						local t = (vertical_offset - 10) / (6 * 4)
 						local size = (1 - math.abs(t - 0.5) * 2) * 6
 
-						render.SetMaterial(sleep)
+						render.SetMaterial(Sleep)
 						render.DrawSprite(attach.Pos + offset, size, size, Color(255, 215, 94, 220))
 					end
 				end

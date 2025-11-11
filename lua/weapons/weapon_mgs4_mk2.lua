@@ -6,6 +6,7 @@ SWEP.Instructions           = "Fire at enemies to decrease their psyche and put 
 SWEP.Spawnable              = true
 SWEP.AdminOnly              = false
 SWEP.Category               = "MGS4"
+SWEP.IconOverride			= "vgui/weapons/weapon_mk2luger"
 
 SWEP.Primary.ClipSize		= 8
 SWEP.Primary.DefaultClip    = 60
