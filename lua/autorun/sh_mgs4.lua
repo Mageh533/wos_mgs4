@@ -484,7 +484,7 @@ if SERVER then
 		end, false)
 	end
 
-	function ent:Cqc_sop_scan(target)
+	function ent:Cqc_sop_scan(target, ex)
 		if not self or not IsValid(target) then return end
 
 		local scan_anim = "mgs4_grab_scan"
@@ -516,7 +516,11 @@ if SERVER then
 
 		if target:IsPlayer() then
 			-- Scan all teamates. Exceptions for TTT because it would be unfair otherwise.
-			local target_role = target:GetRole()
+			local target_role
+
+			if GAMEMODE_NAME == "terrortown" then
+				target_role = target:GetRole()
+			end
 
 			for _, ply in ipairs(player.GetAll()) do
 				if GAMEMODE_NAME == "terrortown" then
@@ -548,6 +552,26 @@ if SERVER then
 
 		local scanning_time = self:GetNWInt("scanner") * 10
 
+		if ex then
+			-- If using Scanner ex on a knocked out target then just skip all the animations and scan instantly
+			
+			-- TODO: Cleanup this mess
+			net.Start("Scanner")
+				net.WriteUInt(#connections, 8)
+				for _, entity in ipairs(connections) do
+					net.WriteEntity(entity)
+				end
+				net.WriteFloat(CurTime())
+				net.WriteFloat(scanning_time)
+			net.Send(self)
+
+			self:SetNWEntity("scanner_ent", scanner_ent)
+
+			return
+		end
+		
+		-- Skip the animations
+
 		self:ForcePosition(true)
 		self:PlayMGS4Animation(scan_anim, function()
 			-- Give back the weapon
@@ -567,9 +591,6 @@ if SERVER then
 				net.WriteFloat(CurTime())
 				net.WriteFloat(scanning_time)
 			net.Send(self)
-
-			print("[Scan] Scanner level:", self:GetNWInt("scanner"))
-			print("[Scan] Duration:", scanning_time)
 		end, false)
 
 		local angles = self:GetAngles()
@@ -1245,7 +1266,7 @@ if SERVER then
 			return
 		end
 
-		if self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) then
+		if self:GetNWBool("helping_up", false) and target:GetNWBool("is_knocked_out", false) and not self:GetNWBool("cqc_button_held") then
 			target:SetNWFloat("psyche", target:GetNWFloat("psyche", 100) + (GetConVar("mgs4_psyche_recovery_action"):GetFloat() * FrameTime() * 10))
 
 			-- Yup, this happens to return the right timings for sfx
@@ -1264,6 +1285,12 @@ if SERVER then
 
 			self:PlayMGS4Animation("mgs4_wakeup_start", function()
 				self:SetNWBool("helping_up", true)
+				-- Scanner EX
+				if self:GetNWBool("cqc_button_held") and not self:GetNWBool("scanning_ex", false) then
+					self:SetNWBool("scanning_ex", true)
+					self:EmitSound("sfx/scan_start.wav", 75, 100, 1, CHAN_WEAPON)
+					self:Cqc_sop_scan(target, true)
+				end
 				self:SetCycle(0)
 			end, false)
 		elseif self:GetNWBool("helping_up", false) and not target:GetNWBool("is_knocked_out", false) then
@@ -1569,21 +1596,8 @@ if SERVER then
 				end
 			end
 
-			-- Press it once for Punch
-			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) then
-				entity:SetNWFloat("cqc_button_hold_time", 0)
-				entity:Cqc_punch()
-			end
-
-			-- Hold the button for CQC Throw and Grab
-			if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == NULL and not entity:GetNWBool("animation_playing", false) then
-				entity:SetNWBool("cqc_button_held", false)
-				entity:SetNWFloat("cqc_button_hold_time", 0)
-				entity:Cqc_check()
-			end
-
 			-- Hold the use button while crouched next to a knocked out entity to help them wake up
-			if entity:GetNWBool("is_using", false) then
+			if entity:GetNWBool("is_using", false) or (entity:GetNWBool("cqc_button_held") and entity:GetNWInt("scanner", 0) > 3) then
 				entity:GetYourselfUp()
 			elseif not entity:GetNWBool("is_using", false) and entity:GetNWBool("helping_up", false) and not entity:GetNWBool("animation_playing", false) then
 				entity:PlayMGS4Animation("mgs4_wakeup_end", function()
@@ -1593,6 +1607,25 @@ if SERVER then
 						entity:SetNWEntity("holster_weapon", NULL)
 					end
 				end, false)
+				-- Scanner EX
+				if entity:GetNWBool("scanning_ex", false) then
+					entity:EmitSound("sfx/scan_end.wav", 75, 100, 1, CHAN_WEAPON)
+					entity:SetNWBool("scanning_ex", false)
+					entity:GetNWEntity("scanner_ent", NULL):Remove()
+				end
+			end
+
+			-- Press it once for Punch
+			if entity:GetNWBool("cqc_button_held", false) == false and entity:GetNWFloat("cqc_button_hold_time", 0) > 0 and entity:GetNWFloat("cqc_button_hold_time", 0) <= 0.5 and not entity:GetNWBool("animation_playing", false) and not entity:GetNWBool("helping_up", false) then
+				entity:SetNWFloat("cqc_button_hold_time", 0)
+				entity:Cqc_punch()
+			end
+
+			-- Hold the button for CQC Throw and Grab
+			if entity:GetNWFloat("cqc_button_hold_time", 0) > 0.2 and entity:GetNWEntity("cqc_grabbing") == NULL and not entity:GetNWBool("animation_playing", false) and not entity:GetNWBool("helping_up", false) then
+				entity:SetNWBool("cqc_button_held", false)
+				entity:SetNWFloat("cqc_button_hold_time", 0)
+				entity:Cqc_check()
 			end
 
 			if entity:GetNWFloat("cqc_punch_time_left", 0) > 0 then
@@ -1679,8 +1712,6 @@ if SERVER then
 
 		for _, ply in ipairs(players) do
 			local role = ply:GetRole()
-
-			print(role, ROLE_DETECTIVE, ROLE_TRAITOR)
 
 			if role == ROLE_DETECTIVE then
 				ply:SetNWInt("cqc_level", detective_cqc_level)
@@ -2223,8 +2254,6 @@ else
 				scanned_entities[entity] = start_time + duration
 			end
 		end
-
-		print("[Client] Received duration:", duration)
 	end)
 
 	hook.Add("PreDrawHalos", "ScanHalos", function()
@@ -2413,6 +2442,10 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 	elseif ply:GetNWBool("helping_up", false) and not ply:GetNWBool("animation_playing", false) then
 		-- == Playing an animation ==
 		local helping_loop = ply:LookupSequence("mgs4_wakeup_loop")
+
+		if ply:GetNWBool("cqc_button_held", false) then
+			helping_loop = ply:LookupSequence("mgs4_wakeup_scanex_loop")
+		end
 
 		ply:SetCycle(CurTime() % 1)
 
