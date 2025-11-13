@@ -503,6 +503,30 @@ if SERVER then
 			self:SetActiveWeapon(NULL)
 		end
 
+		-- Get the scanned entity connections (their team or same type of npc)
+		local connections = {}
+
+		if not self or not IsValid(self) or not IsValid(target) then return end
+
+		if target:IsPlayer() then
+			-- Scan all teamates. Exceptions for TTT because it would be unfair otherwise.
+			for _, ply in ipairs(player.GetAll()) do
+				if ply:Team() == target:Team() and ply ~= self then -- Includes itself
+					table.insert(connections, ply)
+				end
+			end
+		elseif target:IsNPC() then
+			-- Scan all npcs of the same time within 1000 units
+        	local class = target:GetClass()
+			for _, npc in ipairs(ents.FindByClass(class)) do
+				if npc ~= ent and npc:GetPos():DistToSqr(target:GetPos()) < (1000 * 1000) then
+					table.insert(connections, npc)
+				end
+			end
+		end
+
+		local scanning_time = self:GetNWInt("scanner") * 10
+
 		self:ForcePosition(true)
 		self:PlayMGS4Animation(scan_anim, function()
 			-- Give back the weapon
@@ -512,6 +536,19 @@ if SERVER then
 			scanner_ent:Remove()
 			self:SetNWFloat("stuck_check", 0)
 			self:ForcePosition(false)
+
+			-- First recorded usage of me actually using the net library o_o
+			net.Start("Scanner")
+				net.WriteUInt(#connections, 8)
+				for _, entity in ipairs(connections) do
+					net.WriteEntity(entity)
+				end
+				net.WriteFloat(CurTime())
+				net.WriteFloat(scanning_time)
+			net.Send(self)
+
+			print("[Scan] Scanner level:", self:GetNWInt("scanner"))
+			print("[Scan] Duration:", scanning_time)
 		end, false)
 
 		local angles = self:GetAngles()
@@ -1078,7 +1115,6 @@ if SERVER then
 		end
 
 		if not self:GetNWBool("is_aiming", false) then
-			-- Normal mode, hold cqc button to choke, hold+forward or backward to throw, click to throat cut, e to scan.
 			if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- Holding the CQC button starts choking
 				target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - ((20 * FrameTime()) * self:GetNWInt("cqc_level", 1)), 0))
@@ -1106,7 +1142,7 @@ if SERVER then
 					self:Cqc_throw(target, 2)
 				end
 			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
-				-- press e while holding does the throat cut
+				-- press e while holding cqc button does the throat cut
 				self:Cqc_throat_cut(target)
 			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while not holding does the scan
@@ -1904,9 +1940,7 @@ else
 					local crouched_actions = {
 							{
 								icon = Helpup,
-								key = {
-									input.LookupBinding("+use") or "E"
-								}
+								key = {	input.LookupBinding("+use") or "E" }
 							}
 					}
 	
@@ -1914,10 +1948,7 @@ else
 						local scan_ex = {
 							{
 								icon = Scan_ex,
-								key = {
-									Cqc_button,
-									input.LookupBinding("+use") or "E"
-								}
+								key = { Cqc_button }
 							}
 						}
 	
@@ -2123,6 +2154,48 @@ else
 			end
 		end
 	end )
+
+	-- == SOP Scan effects on the client ==
+	local scanned_entities = {}
+	local duration
+
+	net.Receive("Scanner", function()
+		local count = net.ReadUInt(8)
+		local entsToAdd = {}
+		for i = 1, count do
+			table.insert(entsToAdd, net.ReadEntity())
+		end
+		local start_time = net.ReadFloat()
+		duration = net.ReadFloat()
+
+		for _, entity in ipairs(entsToAdd) do
+			if IsValid(entity) then
+				scanned_entities[entity] = start_time + duration
+			end
+		end
+
+		print("[Client] Received duration:", duration)
+	end)
+
+	hook.Add("PreDrawHalos", "ScanHalos", function()
+		local ct = CurTime()
+		local halos = {}
+
+		for entity, expireTime in pairs(scanned_entities) do
+			if not IsValid(entity) or ct > expireTime then
+				scanned_entities[entity] = nil
+			else
+				table.insert(halos, entity)
+			end
+		end
+
+		if #halos > 0 then
+        local t = math.fmod(ct * 0.5, 1)
+        local pulse = (1 - t)^2
+
+        halo.Add(halos, Color(255 * pulse, 0, 0), 2, 2, 1, true, true)
+		end
+	end)
 end
 
 
