@@ -516,9 +516,24 @@ if SERVER then
 
 		if target:IsPlayer() then
 			-- Scan all teamates. Exceptions for TTT because it would be unfair otherwise.
+			local target_role = target:GetRole()
+
 			for _, ply in ipairs(player.GetAll()) do
-				if ply:Team() == target:Team() and ply ~= self then -- Includes itself
-					table.insert(connections, ply)
+				if GAMEMODE_NAME == "terrortown" then
+					-- Scanning a detective, marks all of them.
+					local role = ply:GetRole()
+
+					if role == ROLE_DETECTIVE and target_role == ROLE_DETECTIVE and self:GetRole() then
+						table.insert(connections, ply)
+					end
+
+					if ply == target then
+						table.insert(connections, ply)
+					end
+				else
+					if ply:Team() == target:Team() and ply ~= self then
+						table.insert(connections, ply)
+					end
 				end
 			end
 		elseif target:IsNPC() then
