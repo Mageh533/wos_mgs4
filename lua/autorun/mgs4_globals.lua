@@ -47,6 +47,20 @@ CreateConVar(
 	1
 )
 
+-- TTT specific
+CreateConVar("ttt_mgs4_base_cqc_level_traitor",
+	"3",
+	{FCVAR_ARCHIVE, FCVAR_REPLICATED},
+	"Base Level CQC the Traitors starts with. Default to 3."
+)
+
+CreateConVar(
+	"ttt_mgs4_base_cqc_level_detective",
+	"4",
+	{FCVAR_ARCHIVE, FCVAR_REPLICATED},
+	"Base Level CQC the Detectives starts with. Default to 4."
+)
+
 -- === Client convars ===
 CreateClientConVar(
 	"mgs4_cqc_button",

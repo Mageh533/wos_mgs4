@@ -292,6 +292,12 @@ if SERVER then
 		local active_weapon = self:GetActiveWeapon()
 		if IsValid(active_weapon) then
 			local weapon_class = active_weapon:GetClass()
+			if GAMEMODE_NAME == "terrortown" then
+				-- TTT Exceptions
+				if weapon_class == "weapon_zm_improvised" then return end
+				if weapon_class == "weapon_ttt_unarmed" then return end
+				if weapon_class == "weapon_zm_carry" then return end
+			end
 			self:StripWeapon(weapon_class)
 			self:SetActiveWeapon(NULL)
 			local wep_drop = ents.Create("item_box")
@@ -1518,6 +1524,8 @@ if SERVER then
 		end
 	end)
 
+	local disable_psyche_damage = false
+
 	-- === Handles systems every tick like grabbing and psyche ===
 	hook.Add("Tick", "MGS4Tick", function()
         local npc_and_players = ents.FindByClass("player") -- Find all players
@@ -1624,19 +1632,46 @@ if SERVER then
 			elseif not entity:GetNWBool("is_knocked_out", true) then
 				entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 			end
+
+			-- TTT Specific
+			if disable_psyche_damage then
+				entity:SetNWFloat("psyche", 100)
+			end
 		end
 	end)
 
 	-- Trouble in terrorist town specific hooks
 	hook.Add("TTTOrderedEquipment", "MGS4TTTOrderedEquipment", function(ply, equipment, is_item)
-		if equipment == EQUIP_MGS4_BLADES_3 then
-			ply:SetNWInt("blades", 3)
-		elseif equipment == EQUIP_MGS4_CQC_EX then
-			ply:SetNWInt("cqc_level", 4)
-		elseif equipment == EQUIP_MGS4_CQC_PLUS_3 then
-			ply:SetNWInt("cqc_level", 3)
-		elseif equipment == EQUIP_MGS4_SCANNER_3 then
+		if equipment == EQUIP_MGS4_SCANNER_3 then
 			ply:SetNWInt("scanner", 3)
+		elseif equipment == "weapon_ttt_knife" then
+			ply:SetNWInt("blades", 3)
+		end
+	end)
+
+	hook.Add("TTTPrepareRound", "MGS4DisablePsycheDamage", function ()
+		disable_psyche_damage = true
+	end)
+
+	hook.Add("TTTBeginRound", "MGS4DisableEnableDamage", function ()
+		disable_psyche_damage = false
+
+		-- Grant CQC levels based on cvars
+		local detective_cqc_level = GetConVar("ttt_mgs4_base_cqc_level_detective"):GetInt()
+		local traitor_cqc_level = GetConVar("ttt_mgs4_base_cqc_level_traitor"):GetInt()
+
+		local players = player.GetAll()
+
+		for _, ply in ipairs(players) do
+			local role = ply:GetRole()
+
+			print(role, ROLE_DETECTIVE, ROLE_TRAITOR)
+
+			if role == ROLE_DETECTIVE then
+				ply:SetNWInt("cqc_level", detective_cqc_level)
+			elseif role == ROLE_TRAITOR then
+				ply:SetNWInt("cqc_level", traitor_cqc_level)
+			end
 		end
 	end)
 else
