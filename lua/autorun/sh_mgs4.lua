@@ -2261,7 +2261,7 @@ else
 		local halos = {}
 
 		for entity, expireTime in pairs(scanned_entities) do
-			if not IsValid(entity) or ct > expireTime then
+			if not IsValid(entity) or ct > expireTime or not entity:Alive() then
 				scanned_entities[entity] = nil
 			else
 				table.insert(halos, entity)
