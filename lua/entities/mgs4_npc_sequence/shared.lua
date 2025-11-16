@@ -46,7 +46,11 @@ if SERVER then
         ow:SetNoDraw(false)
         ow:SetRenderMode(RENDERMODE_NORMAL)
         ow:DrawShadow(true)
-        ow:RemoveEFlags(EFL_NO_THINK_FUNCTION)
+        ow:ClearSchedule()
+        ow:SetSchedule(SCHED_IDLE_STAND)
+        timer.Simple(0.3, function ()
+            ow:RemoveEFlags(EFL_NO_THINK_FUNCTION)
+        end)
         local wep = ow:GetActiveWeapon()
         if IsValid(wep) then
             wep:SetNoDraw(false)

@@ -4,11 +4,7 @@ Requires the WoS dyna base.
 
 A CQC system recreation based on MGS4/MGO2
 
-TODO:
-
-1. NPC Support.
-
-TODO EXTRAS:
+TODO EXTRA FEATURES:
 
 1. Prone addon support
 2. Mosin nagant.

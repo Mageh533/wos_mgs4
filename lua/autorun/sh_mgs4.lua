@@ -323,6 +323,32 @@ if SERVER then
 	function ent:DropWeaponAsItem()
 		if not self then return end
 
+		local function StripNPCWeapon(npc)
+			if not IsValid(npc) then return end
+
+			-- 1. Standard HL2 NPC / Nextbot weapon entity
+			for _, child in ipairs(npc:GetChildren()) do
+				if IsValid(child) and (child:IsWeapon() or child:GetClass():find("weapon")) then
+					child:Remove()
+				end
+			end
+
+			-- 2. VJ Base
+			if npc.WeaponEnt and IsValid(npc.WeaponEnt) then
+				npc.WeaponEnt:Remove()
+				npc.WeaponEnt = nil
+				npc.HasWeapon = false
+			end
+
+			-- 3. Fallback weapon disabling flags
+			if npc.SetNPCState then
+				npc:SetNPCState(NPC_STATE_IDLE)
+			end
+			if npc.ClearEnemyMemory then
+				npc:ClearEnemyMemory()
+			end
+		end
+
 		-- Make them drop their weapon in an item box
 		local active_weapon = self:GetActiveWeapon()
 		if IsValid(active_weapon) then
@@ -333,8 +359,12 @@ if SERVER then
 				if weapon_class == "weapon_ttt_unarmed" then return end
 				if weapon_class == "weapon_zm_carry" then return end
 			end
-			self:StripWeapon(weapon_class)
-			self:SetActiveWeapon(NULL)
+			if self:IsPlayer() then
+				self:StripWeapon(weapon_class)
+				self:SetActiveWeapon(NULL)
+			else
+				StripNPCWeapon(self)
+			end
 			local wep_drop = ents.Create("item_box")
 			wep_drop:SetPos(self:GetPos() + Vector(0,0,20))
 			wep_drop:Spawn()
@@ -1781,6 +1811,7 @@ if SERVER then
 				if entity:IsPlayer() then
 					entity:Freeze(false)
 				else
+					-- Make the npc wait a bit before going back to normal (so they dont riddle you with bullets the millisecond their animation stops)
 					entity:SetNPCState(NPC_STATE_IDLE)
 				end
 			end
