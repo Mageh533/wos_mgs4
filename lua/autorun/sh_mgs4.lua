@@ -24,11 +24,12 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 	self:SetVelocity(-self:GetVelocity())
 
 	if self:IsNPC() then
-		if self:GetNWEntity("npc_proxy", NULL) == NULL then
-			npc_proxy = ents.Create("mgs4_npc_sequence")
-		else
-			npc_proxy = self:GetNWEntity("npc_proxy", NULL)
+		if self:GetNWEntity("npc_proxy", NULL) ~= NULL then
+			local old_px = self:GetNWEntity("npc_proxy", NULL)
+			old_px:Stop()
+			old_px:Remove()
 		end
+		npc_proxy = ents.Create("mgs4_npc_sequence")
 		npc_proxy.NPC = self
 		npc_proxy.Sequence = anim
 		npc_proxy.Speed = sp_modifier
@@ -1168,13 +1169,13 @@ if SERVER then
 		end
 
 		local player_pos = self:GetPos()
-		local player_angle = self:GetAngles()
+		local player_angle = self:EyeAngles()
 
 		target:SetPos(player_pos + (player_angle:Forward() * 5)) -- Move the target slightly forward
 		if target:IsPlayer() then
 			target:SetEyeAngles(player_angle)
 		else
-			target:SetAngles(player_angle)
+			target:SetAngles(Angle(0, player_angle.y, 0))
 		end
 
 		-- Target slowly is able to escape depending on cqc level
@@ -1201,7 +1202,7 @@ if SERVER then
 					target:SetNWBool("is_choking", true)
 					self:SetNWBool("is_choking", true)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				if self:GetNWBool("is_grabbed_crouched", false) then
 					-- Start prone choke
 					self:Cqc_grab_tchoke_start(target)
@@ -1209,7 +1210,7 @@ if SERVER then
 					-- Holding and moving forward throws the target in front
 					self:Cqc_throw(target, 1)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				if self:GetNWBool("is_grabbed_crouched", false) then
 					-- Start prone choke
 					self:Cqc_grab_tchoke_start(target)
@@ -1217,10 +1218,10 @@ if SERVER then
 					-- Holding and moving backward throws the target behind
 					self:Cqc_throw(target, 2)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while holding cqc button does the throat cut
 				self:Cqc_throat_cut(target)
-			elseif not self:GetNWBool("cqc_button_held", false) and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif not self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while not holding does the scan
 				self:Cqc_sop_scan(target)
 			elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
@@ -1240,7 +1241,8 @@ if SERVER then
 			end
 		end
 
-		if target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) == NULL then
+		-- NPC Specific animations
+		if target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) == NULL and not target:GetNWBool("animation_playing", false) then
 			local npc_proxy = ents.Create("mgs4_npc_sequence")
 
 			target:SetNWEntity("npc_proxy", npc_proxy)
@@ -1253,8 +1255,34 @@ if SERVER then
 			npc_proxy:SetPos(target:GetPos())
 			npc_proxy:SetAngles(target:GetAngles())
 			npc_proxy:Spawn()
-		elseif target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) ~= NULL then
+		elseif target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) ~= NULL and not target:GetNWBool("animation_playing", false) then
+			local npc_proxy = target:GetNWEntity("npc_proxy", NULL)
 
+			local active_sequence = npc_proxy:GetSequence()
+
+			local grabbed_loop = npc_proxy:LookupSequence("mgs4_grabbed_loop")
+			local grabbed_chocking = npc_proxy:LookupSequence("mgs4_grabbed_chocking")
+
+			local grabbed_t_chocking = npc_proxy:LookupSequence("mgs4_grabbed_crouched_tchoke_loop")
+
+			local grabbed_crouched_loop = npc_proxy:LookupSequence("mgs4_grabbed_crouched_loop")
+			local grabbed_crouched_chocking = npc_proxy:LookupSequence("mgs4_grabbed_crouched_chocking")
+
+			if target:GetNWBool("is_t_choking", false) and active_sequence ~= grabbed_t_chocking then
+				npc_proxy:ResetSequence(grabbed_t_chocking)
+			elseif target:GetNWBool("is_choking", false) then
+				if target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_crouched_chocking then
+					npc_proxy:ResetSequence(grabbed_crouched_chocking)
+				elseif !target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_chocking then
+					npc_proxy:ResetSequence(grabbed_chocking)
+				end
+			else
+				if target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_crouched_loop then
+					npc_proxy:ResetSequence(grabbed_crouched_loop)
+				elseif !target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_loop then
+					npc_proxy:ResetSequence(grabbed_loop)
+				end
+			end
 		end
 	end
 
@@ -1375,15 +1403,15 @@ if SERVER then
 			ply:SetNWBool("will_grab", false)
 		end
 
-		if key == IN_ATTACK2 and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL then
+		if key == IN_ATTACK2 and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_t_choking", false) then
 			ply:SetNWBool("is_aiming", not ply:GetNWBool("is_aiming", false))
 		end
 
-		if key == IN_ATTACK and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false) then
+		if key == IN_ATTACK and ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false)  and not ply:GetNWBool("is_t_choking", false) then
 			ply:SetNWBool("is_knife", true)
 		end
 
-		if key == IN_USE then
+		if key == IN_USE  and not ply:GetNWBool("is_t_choking", false) then
 			ply:SetNWBool("is_using", true)
 		end
 	end)
@@ -2467,7 +2495,7 @@ hook.Add("CalcMainActivity", "MGS4Anims", function(ply, vel)
 		-- == CQC grab loop ==
 		local target = ply:GetNWEntity("cqc_grabbing", NULL)
 		
-		if not IsValid(target) or not target:IsPlayer() then return end
+		if not IsValid(target) then return end
 		
 		local grabbing_anim
 
