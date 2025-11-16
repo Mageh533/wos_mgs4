@@ -24,9 +24,14 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 	self:SetVelocity(-self:GetVelocity())
 
 	if self:IsNPC() then
-		npc_proxy = ents.Create("mgs4_npc_sequence")
+		if self:GetNWEntity("npc_proxy", NULL) == NULL then
+			npc_proxy = ents.Create("mgs4_npc_sequence")
+		else
+			npc_proxy = self:GetNWEntity("npc_proxy", NULL)
+		end
 		npc_proxy.NPC = self
 		npc_proxy.Sequence = anim
+		npc_proxy.Speed = sp_modifier
 		npc_proxy:SetPos(self:GetPos())
 		npc_proxy:SetAngles(self:GetAngles())
 		npc_proxy:Spawn()
@@ -61,6 +66,10 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 		if npc_proxy then
             npc_proxy:Stop()
             npc_proxy:Remove()
+
+			if self:GetNWEntity("npc_proxy", NULL) ~= NULL then
+				self:SetNWEntity("npc_proxy", NULL)
+			end
 		end
 
 	end)
@@ -1229,6 +1238,23 @@ if SERVER then
 					self:SetNWBool("is_choking", false)
 				end
 			end
+		end
+
+		if target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) == NULL then
+			local npc_proxy = ents.Create("mgs4_npc_sequence")
+
+			target:SetNWEntity("npc_proxy", npc_proxy)
+
+			npc_proxy.NPC = target
+
+			local grabbed_anim = "mgs4_grabbed_loop"
+				
+			npc_proxy.Sequence = grabbed_anim
+			npc_proxy:SetPos(target:GetPos())
+			npc_proxy:SetAngles(target:GetAngles())
+			npc_proxy:Spawn()
+		elseif target:IsNPC() and target:GetNWEntity("npc_proxy", NULL) ~= NULL then
+
 		end
 	end
 

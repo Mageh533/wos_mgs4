@@ -23,6 +23,7 @@ if SERVER then
         self.NPC:SetNoDraw(true)
 
         self:ResetSequence(self.Sequence)
+        self:SetPlaybackRate(self.Speed)
         local delay = select(2, self:LookupSequence(self.Sequence))
         self:SetCycle( ( ( (delay-0.1)/delay )-1)*-1 )
 
