@@ -1277,9 +1277,9 @@ if SERVER then
 					npc_proxy:ResetSequence(grabbed_chocking)
 				end
 			else
-				if target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_crouched_loop then
+				if target:GetNWBool("is_grabbed_crouched", false) and not target:GetNWBool("is_t_choking", false) and active_sequence ~= grabbed_crouched_loop then
 					npc_proxy:ResetSequence(grabbed_crouched_loop)
-				elseif !target:GetNWBool("is_grabbed_crouched", false) and active_sequence ~= grabbed_loop then
+				elseif !target:GetNWBool("is_grabbed_crouched", false) and not target:GetNWBool("is_t_choking", false)  and active_sequence ~= grabbed_loop then
 					npc_proxy:ResetSequence(grabbed_loop)
 				end
 			end
