@@ -4,6 +4,8 @@ local ent = FindMetaTable("Entity")
 function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 	if not self then return end
 
+	local npc_proxy -- If playing on an npc
+
 	local current_anim = self:LookupSequence(anim)
 	local duration = self:SequenceDuration(current_anim)
 
@@ -21,10 +23,29 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 
 	self:SetVelocity(-self:GetVelocity())
 
+	if self:IsNPC() then
+		npc_proxy = ents.Create("mgs4_npc_sequence")
+		npc_proxy.NPC = self
+		npc_proxy.Sequence = anim
+		npc_proxy:SetPos(self:GetPos())
+		npc_proxy:SetAngles(self:GetAngles())
+		npc_proxy:Spawn()
+
+		current_anim = npc_proxy:LookupSequence(anim)
+		duration = npc_proxy:SequenceDuration(current_anim)
+	end
+
 	timer.Simple(duration / sp_modifier, function()
 		if self:Alive() == false then return end
 
-		local pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
+		local pelvis_matrix
+
+		if self:IsPlayer() then
+			pelvis_matrix = self:GetBoneMatrix(self:LookupBone("ValveBiped.Bip01_Pelvis"))
+		else
+			pelvis_matrix = npc_proxy:GetBoneMatrix(npc_proxy:LookupBone("ValveBiped.Bip01_Pelvis"))
+		end
+
 		pos_to_set = pelvis_matrix:GetTranslation()
 
 		if updatepos then
@@ -35,6 +56,11 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 
 		if callback and type(callback) == "function" then
 		    callback(self)
+		end
+
+		if npc_proxy then
+            npc_proxy:Stop()
+            npc_proxy:Remove()
 		end
 
 	end)
@@ -57,7 +83,6 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 			self:SetNWString('SVAnim', "")
 		end
 	end)
-
 end
 
 -- === Helper to trace a box in front of an entity ===
@@ -1678,7 +1703,11 @@ if SERVER then
 
 				entity:SetNWFloat("stuck_check", entity:GetNWFloat("stuck_check", 0) - FrameTime())
 			elseif not entity:GetNWBool("is_knocked_out", true) then
-				entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+				if entity:IsPlayer() then	
+					entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+				else
+					entity:SetCollisionGroup(COLLISION_GROUP_NPC)
+				end
 			end
 
 			-- TTT Specific
