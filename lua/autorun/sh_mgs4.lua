@@ -1380,10 +1380,41 @@ if SERVER then
 			if entity:GetNWInt("last_nonlethal_damage_type", 0) ~= 1 then
 				entity:EmitSound("sfx/stars.wav", 75, 100, 1, CHAN_VOICE)
 			end
+
+			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
+				local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
+				npc_proxy:Stop()
+				npc_proxy:Remove()
+				entity:SetNWEntity("npc_proxy", NULL)
+			end
+
 			entity:StandUp()
 		else
 			entity:SetNWBool("animation_playing", true)
 			entity:SetVelocity(-entity:GetVelocity())
+
+			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) == NULL then
+				local npc_proxy = ents.Create("mgs4_npc_sequence")
+
+				entity:SetNWEntity("npc_proxy", npc_proxy)
+
+				npc_proxy.NPC = entity
+
+				local knockout_type = entity:GetNWInt("last_nonlethal_damage_type", 0)
+
+				local knockout_anim
+
+				if knockout_type == 0 then
+					knockout_anim = "mgs4_knocked_out_loop_faceup"
+				else
+					knockout_anim = "mgs4_knocked_out_loop_facedown"
+				end
+					
+				npc_proxy.Sequence = knockout_anim
+				npc_proxy:SetPos(entity:GetPos())
+				npc_proxy:SetAngles(entity:GetAngles())
+				npc_proxy:Spawn()
+			end
 
 			local psyche = entity:GetNWFloat("psyche", 100)
 			if psyche < 100 then
@@ -2225,14 +2256,21 @@ else
 	end )
 
 	hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function()
-		for _, ent in ipairs( ents.GetAll() ) do
-			local is_knocked_out = ent:GetNWBool("is_knocked_out", false)
-			local last_dmg_type = ent:GetNWInt("last_nonlethal_damage_type", 0)
+		for _, entity in ipairs( ents.GetAll() ) do
+			local is_knocked_out = entity:GetNWBool("is_knocked_out", false)
+			local last_dmg_type = entity:GetNWInt("last_nonlethal_damage_type", 0)
+
+			local attach = entity:GetAttachment( entity:LookupAttachment( "eyes" ) )
+
+			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
+				local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
+
+				attach = npc_proxy:GetAttachment( npc_proxy:LookupAttachment( "eyes" ) )
+			end
+
+			local psyche = entity:GetNWFloat("psyche", 0)
 
 			if ( is_knocked_out and last_dmg_type ~= 1 ) then
-				local attach = ent:GetAttachment( ent:LookupAttachment( "eyes" ) )
-				local psyche = ent:GetNWFloat("psyche", 0)
-
 				if ( attach ) then
 					local stars = math.Clamp( math.ceil( ( 100 - psyche ) / 20 ), 1, 5 )
 
@@ -2245,9 +2283,6 @@ else
 					end
 				end
 			elseif ( is_knocked_out and last_dmg_type == 1 ) then
-				local attach = ent:GetAttachment( ent:LookupAttachment( "eyes" ) )
-				local psyche = ent:GetNWFloat("psyche", 0)
-
 				if ( attach ) then
 					local zzz = math.Clamp( math.ceil( ( 100 - psyche ) / 33 ), 1, 3 )
 
@@ -2296,7 +2331,12 @@ else
 			if not IsValid(entity) or ct > expireTime or not entity:Alive() then
 				scanned_entities[entity] = nil
 			else
-				table.insert(halos, entity)
+				local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
+				if npc_proxy ~= NULL then
+					table.insert(halos, npc_proxy)
+				else
+					table.insert(halos, entity)
+				end
 			end
 		end
 

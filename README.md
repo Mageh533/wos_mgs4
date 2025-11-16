@@ -8,7 +8,7 @@ TODO:
 
 1. NPC Support.
 
-EXTRAS:
+TODO EXTRAS:
 
 1. Prone addon support
 2. Mosin nagant.
