@@ -14,11 +14,13 @@ local perk = {
 	desc = "mgs4_scannerplus3_desc",
 }
 
-if (GetConVar("ttt_mgs4_scanner_3_detective"):GetBool()) then
+-- There is no point in buying this if the traitors/detectives cannot use cqc grabs
+
+if (GetConVar("ttt_mgs4_scanner_3_detective"):GetBool()) and GetConVar("ttt_mgs4_base_cqc_level_detective"):GetInt() > 0 then
 	table.insert(EquipmentItems[ROLE_DETECTIVE], perk)
 end
 
-if (GetConVar("ttt_mgs4_scanner_3_traitor"):GetBool()) then
+if (GetConVar("ttt_mgs4_scanner_3_traitor"):GetBool()) and GetConVar("ttt_mgs4_base_cqc_level_traitor"):GetInt() > 0 then
 	table.insert(EquipmentItems[ROLE_TRAITOR], perk)
 end
 
