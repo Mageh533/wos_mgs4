@@ -70,6 +70,8 @@ if SERVER then
             if IsValid(wep) then
                 wep:SetNoDraw(true)
             end
+    		self:SetPos(ow:GetPos())
+		    self:SetAngles(ow:GetAngles())
         end
         self:SetNoDraw(true)
         self:DrawShadow(false)

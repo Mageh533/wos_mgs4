@@ -157,7 +157,7 @@ if SERVER then
 				angles = self:EyeAngles()
 			end
 
-			self:SetNWAngle("forced_angle", ang and ang or Angle(0, angles.y, 0))
+			self:SetNWAngle("forced_angle", ang and Angle(0, ang.y, 0) or Angle(0, angles.y, 0))
 		else
 			self:SetNWBool("force_position", false)
 		end
@@ -1544,14 +1544,17 @@ if SERVER then
 				-- Convert to player-relative angle
 				local entAngle = ent:GetAngles().y
 
+				local crouching = false
+
 				if ent:IsPlayer() then
 					entAngle = ent:EyeAngles().y
+					crouching = ent:Crouching()
 				end
 
 				local relativeAngle = math.NormalizeAngle(angleAround - entAngle)
 
 				if psyche_dmg >= 10 and psyche_dmg < 50 then
-					if ent:Crouching() then
+					if crouching then
 						-- Only front/back knockback when crouched
 						if math.abs(relativeAngle) <= 90 then
 							ent:PlayMGS4Animation("mgs4_knockback_small_back_crouched", nil, true)
