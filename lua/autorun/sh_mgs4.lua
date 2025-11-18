@@ -1477,7 +1477,7 @@ if SERVER then
 			entity:SetNWBool("animation_playing", true)
 			entity:SetVelocity(-entity:GetVelocity())
 
-			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) == NULL then
+			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) == NULL and entity:Alive() then
 				local npc_proxy = ents.Create("mgs4_npc_sequence")
 
 				entity:SetNWEntity("npc_proxy", npc_proxy)
@@ -2355,7 +2355,7 @@ else
 
 			local psyche = entity:GetNWFloat("psyche", 0)
 
-			if ( is_knocked_out and last_dmg_type ~= 1 ) then
+			if ( is_knocked_out and last_dmg_type ~= 1 and entity:Alive() ) then
 				if ( attach ) then
 					local stars = math.Clamp( math.ceil( ( 100 - psyche ) / 20 ), 1, 5 )
 
@@ -2367,7 +2367,7 @@ else
 						render.DrawSprite( attach.Pos + offset, 5, 5, Color( 255, 215, 94 ) )
 					end
 				end
-			elseif ( is_knocked_out and last_dmg_type == 1 ) then
+			elseif ( is_knocked_out and last_dmg_type == 1 and entity:Alive() ) then
 				if ( attach ) then
 					local zzz = math.Clamp( math.ceil( ( 100 - psyche ) / 33 ), 1, 3 )
 

@@ -49,6 +49,10 @@ if SERVER then
         ow:ClearSchedule()
         ow:SetSchedule(SCHED_IDLE_STAND)
         timer.Simple(0.3, function ()
+            if !IsValid(ow) then return end
+            if ow.IsVJBaseSNPC then
+                ow.HasDeathAnimation = true
+            end
             ow:RemoveEFlags(EFL_NO_THINK_FUNCTION)
         end)
         local wep = ow:GetActiveWeapon()
@@ -60,9 +64,10 @@ if SERVER then
     function ENT:Think()
         local ow = self.NPC
 
-        if !IsValid(ow) or ow:Health() <= 0 then
+        if !IsValid(ow) or ow:Health() <= 0 or not ow:Alive() then
             self:Stop()
             self:Remove()
+            return
         else
             ow:SetNoDraw(true)
             ow:SetRenderMode(RENDERMODE_NONE)
