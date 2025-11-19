@@ -77,6 +77,7 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 
 	self:EmitMGS4Sound(anim, sp_modifier)
 
+	-- Thanks Hari and NizcKM, This idea for server animations is great. 
 	self:SetNWString('SVAnim', anim)
 	self:SetNWFloat('SVAnimDelay', select(2, self:LookupSequence(anim)))
 	self:SetNWFloat('SVAnimStartTime', CurTime())
@@ -790,7 +791,7 @@ if SERVER then
 			self:PlayMGS4Animation("mgs4_cqc_throw_gun_back", function()
 				self:Cqc_reset()
 				self:ForcePosition(false)
-			end, true)
+			end, true, speed_modifier)
 
 			target:SetNWInt("last_nonlethal_damage_type", 0)
 			target:SetNWBool("is_in_cqc", true)

@@ -1,4 +1,7 @@
 "UnlitGeneric"
 {
 	"$basetexture" "vgui/weapons/weapon_mk2luger"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$translucent" "1"
 }

@@ -33,7 +33,7 @@ CreateConVar(
 )
 CreateConVar(
 	"mgs4_cqc_immunity",
-	"5",
+	"1",
 	{ FCVAR_SERVER_CAN_EXECUTE, FCVAR_REPLICATED, FCVAR_ARCHIVE },
 	"How long a person is immune to CQC after being CQCed"
 )
