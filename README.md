@@ -4,6 +4,13 @@ Requires the WoS dyna base.
 
 A CQC system recreation based on MGS4/MGO2
 
+BUGS TO FIX:
+
+1. Desync on multiplayer (when playing animations as well), maybe make the functions shared?
+2. mk2 on ttt, fix slot
+3. Moving backwards when grabbing on its own
+4. Hitboxes on npcs
+
 TODO EXTRA FEATURES:
 
 1. Prone addon support
