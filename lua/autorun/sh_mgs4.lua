@@ -2454,9 +2454,11 @@ end)
 -- === Handling buttons while grabbing ===
 hook.Add("StartCommand", "MGS4StartCommand", function(ply, cmd)
 	if ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and not ply:GetNWBool("is_aiming", false) and not ply:GetNWBool("is_knife", false) then
+		cmd:ClearMovement()
 		cmd:RemoveKey(IN_ATTACK)
 		cmd:RemoveKey(IN_RELOAD)
 	elseif ply:GetNWEntity("cqc_grabbing", NULL) ~= NULL and ply:GetNWBool("is_aiming", false) then
+		cmd:ClearMovement()
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_FORWARD)
 		cmd:RemoveKey(IN_BACK)
