@@ -1340,6 +1340,8 @@ if SERVER then
 					break
 				end
 			end
+		else
+			large_weapon = false
 		end
 
 		if is_in_cqc or cqc_level < 0 or not cqc_target then return end
