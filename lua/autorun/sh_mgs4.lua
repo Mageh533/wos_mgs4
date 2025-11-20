@@ -71,6 +71,9 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 			if self:GetNWEntity("npc_proxy", NULL) ~= NULL then
 				self:SetNWEntity("npc_proxy", NULL)
 			end
+
+			-- Thanks Sunw5w for pointing this out about stiff npcs
+			self:SetNPCState(NPC_STATE_IDLE)
 		end
 
 	end)
@@ -1813,9 +1816,6 @@ if SERVER then
 			else
 				if entity:IsPlayer() then
 					entity:Freeze(false)
-				else
-					-- Make the npc wait a bit before going back to normal (so they dont riddle you with bullets the millisecond their animation stops)
-					entity:SetNPCState(NPC_STATE_IDLE)
 				end
 			end
 
