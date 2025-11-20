@@ -10,7 +10,6 @@ BUGS TO FIX:
 1. Mk2 on ttt, fix slot
 1. Moving backwards when grabbing on its own
 1. Hitboxes on npcs missmatching
-1. Waking someone from tranq hides the viewmodel
 1. Stuck check is causing npcs to wobble back and forwards
 
 TODO EXTRA FEATURES:

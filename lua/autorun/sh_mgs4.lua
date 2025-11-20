@@ -1748,6 +1748,7 @@ if SERVER then
 				entity:PlayMGS4Animation("mgs4_wakeup_end", function()
 					entity:SetNWBool("helping_up", false)
 					if entity:GetNWEntity("holster_weapon", NULL) ~= NULL then
+						entity:DrawViewModel(true)
 						entity:SetActiveWeapon(entity:GetNWEntity("holster_weapon", NULL))
 						entity:SetNWEntity("holster_weapon", NULL)
 					end
