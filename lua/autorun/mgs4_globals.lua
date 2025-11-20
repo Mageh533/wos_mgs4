@@ -97,6 +97,15 @@ CreateClientConVar("mgs4_actions_in_thirdperson",
 	1
 )
 
+CreateClientConVar("mgs4_disable_camera_manipulation",
+	"0",
+	true,
+	false,
+	"Disable camera manipulation during CQC actions. Useful if you have your own custom third person addon.",
+	0,
+	1
+)
+
 -- === Global variables ===
 Small_weapons_holdtypes = {
 	"pistol",
