@@ -7,9 +7,11 @@ A CQC system recreation based on MGS4/MGO2
 BUGS TO FIX:
 
 1. Desync on multiplayer (when playing animations as well), maybe make the functions shared?
-2. mk2 on ttt, fix slot
-3. Moving backwards when grabbing on its own
-4. Hitboxes on npcs
+1. Mk2 on ttt, fix slot
+1. Moving backwards when grabbing on its own
+1. Hitboxes on npcs missmatching
+1. Waking someone from tranq hides the viewmodel
+1. Stuck check is causing npcs to wobble back and forwards
 
 TODO EXTRA FEATURES:
 

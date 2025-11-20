@@ -42,7 +42,7 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 	end
 
 	timer.Simple(duration / sp_modifier, function()
-		if self:Alive() == false then return end
+		if not IsValid(self) or not self:Alive() then return end
 
 		local pelvis_matrix
 
@@ -271,6 +271,7 @@ if SERVER then
 			self:PlayMGS4Animation(knockout_anim, function()
 				self:SetNWBool("is_knocked_out", true)
 				self:ForcePosition(true, self:GetPos(), angles)
+				self:SetNWFloat("stuck_check", 0)
 			end, true)
 		else
 			self:SetNWBool("is_knocked_out", true)

@@ -97,6 +97,8 @@ function SWEP:PrimaryAttack()
 	bullet.AmmoType = self.Primary.Ammo
 
 	bullet.Callback = function(attacker, tr, dmginfo)
+		if tr.Entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
+
 		local psyche = tr.Entity:GetNWFloat("psyche", 100)
 
 		if tr.Entity:GetNWBool("is_knocked_out", false) or psyche <= 0 then dmginfo:SetDamage(0) return true end
