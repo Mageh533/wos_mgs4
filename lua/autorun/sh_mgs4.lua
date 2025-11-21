@@ -2356,6 +2356,8 @@ else
 
 	hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function()
 		for _, entity in ipairs( ents.GetAll() ) do
+			if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
+
 			local is_knocked_out = entity:GetNWBool("is_knocked_out", false)
 			local last_dmg_type = entity:GetNWInt("last_nonlethal_damage_type", 0)
 
