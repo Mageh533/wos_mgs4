@@ -33,7 +33,7 @@ SWEP.DrawCrosshair		   = false
 
 -- Placeholder. Replace with a really cool MK2 (luger looking) pistol with custom anims
 SWEP.ViewModel				= "models/weapons/c_mgs4_rugermk2.mdl"
-SWEP.WorldModel				= "models/weapons/c_mgs4_rugermk2.mdl"
+SWEP.WorldModel				= "models/weapons/w_mgs4_rugermk2.mdl"
 
 SWEP.UseHands				= true
 
