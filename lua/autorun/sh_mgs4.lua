@@ -23,7 +23,7 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 
 	self:SetVelocity(-self:GetVelocity())
 
-	if self:IsNPC() then
+	if self:IsNPC() or self:IsNextBot() then
 		if self:GetNWEntity("npc_proxy", NULL) ~= NULL then
 			local old_px = self:GetNWEntity("npc_proxy", NULL)
 			old_px:Stop()
@@ -73,7 +73,11 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 			end
 
 			-- Thanks Sunw5w for pointing this out about stiff npcs
-			self:SetNPCState(NPC_STATE_IDLE)
+			if self:IsNPC() and self.SetNPCState then
+				self:SetNPCState(NPC_STATE_IDLE)
+			elseif self:IsNextBot() then
+				self:StartActivity(ACT_IDLE)
+			end
 		end
 
 	end)
@@ -349,6 +353,11 @@ if SERVER then
 			if npc.SetNPCState then
 				npc:SetNPCState(NPC_STATE_IDLE)
 			end
+
+			if npc:IsNextBot() then
+				npc:StartActivity(ACT_IDLE)
+			end
+
 			if npc.ClearEnemyMemory then
 				npc:ClearEnemyMemory()
 			end
@@ -1811,8 +1820,10 @@ if SERVER then
 						local dir = entity:EyeAngles():Forward()
 						entity:SetVelocity(dir * 10)
 					end
-				else
+				elseif entity:IsNPC() then
 					entity:SetNPCState(NPC_STATE_SCRIPT)
+				elseif entity:IsNextBot() then
+					entity:StartActivity(ACT_IDLE)
 				end
 				entity:SetNWFloat("stuck_check", 1.0)
 			else

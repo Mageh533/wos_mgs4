@@ -46,8 +46,13 @@ if SERVER then
         ow:SetNoDraw(false)
         ow:SetRenderMode(RENDERMODE_NORMAL)
         ow:DrawShadow(true)
-        ow:ClearSchedule()
-        ow:SetSchedule(SCHED_IDLE_STAND)
+        if ow:IsNPC() and ow.SetNPCState then
+            ow:ClearSchedule()
+            ow:SetSchedule(SCHED_IDLE_STAND)
+        elseif ow:IsNextBot() then
+            ow:StartActivity(ACT_IDLE)
+        end
+
         timer.Simple(0.3, function ()
             if !IsValid(ow) then return end
             if ow.IsVJBaseSNPC then
