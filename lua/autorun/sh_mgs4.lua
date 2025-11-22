@@ -558,8 +558,17 @@ if SERVER then
 		target:PlayMGS4Animation(knifed_anim, function()
 			target:SetNWBool("is_in_cqc", false)
 
-			-- Just kill them lmao
-			target:TakeDamage(1000, self, self)
+			-- Kill them but lots of damage but without the massive knockback
+			local dmginfo = DamageInfo()
+
+			dmginfo:SetDamage(target:Health())
+			dmginfo:SetDamageType(DMG_SLASH)
+			dmginfo:SetAttacker(self)
+			dmginfo:SetInflictor(self)
+
+			target:TakeDamageInfo(dmginfo)
+
+			target:SetVelocity(target:GetVelocity())
 
 			target:ForcePosition(false)
 		end, false)
