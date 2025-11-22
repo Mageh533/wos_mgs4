@@ -1860,6 +1860,19 @@ if SERVER then
 		end
 	end)
 
+	-- ply.GrabbedEntity should be whatever you store the grabbed victim as
+	hook.Add("EntityFireBullets", "NoShootGrabbedTarget", function(entity, data)
+		if not IsValid(entity) or not entity:IsPlayer() then return end
+
+		local grabbed = entity:GetNWEntity("cqc_grabbing", NULL)
+		if not IsValid(grabbed) then return end
+
+		-- Add grabbed entity to the bullet filter so the trace skips it
+		data.IgnoreEntity = grabbed
+
+		return true
+	end)
+
 	-- Trouble in terrorist town specific hooks
 	hook.Add("TTTOrderedEquipment", "MGS4TTTOrderedEquipment", function(ply, equipment, is_item)
 		if equipment == EQUIP_MGS4_SCANNER_3 then
