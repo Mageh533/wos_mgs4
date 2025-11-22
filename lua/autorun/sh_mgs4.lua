@@ -1238,7 +1238,7 @@ if SERVER then
 		end
 
 		if not self:GetNWBool("is_aiming", false) then
-			if self:GetNWBool("cqc_button_held", false) and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			if self:GetNWBool("cqc_button_held", false) and not self:KeyDown(IN_USE) and not self:KeyDown(IN_FORWARD) and not self:KeyDown(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- Holding the CQC button starts choking
 				target:SetNWFloat("psyche", math.max(target:GetNWFloat("psyche", 100) - ((20 * FrameTime()) * self:GetNWInt("cqc_level", 1)), 0))
 				if target:GetNWBool("is_t_choking", false) then
@@ -1248,7 +1248,7 @@ if SERVER then
 					target:SetNWBool("is_choking", true)
 					self:SetNWBool("is_choking", true)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyPressed(IN_USE) and self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyDown(IN_USE) and self:KeyDown(IN_FORWARD) and not self:KeyDown(IN_BACK) and not self:GetNWBool("animation_playing") then
 				if self:GetNWBool("is_grabbed_crouched", false) then
 					-- Start prone choke
 					self:Cqc_grab_tchoke_start(target)
@@ -1256,7 +1256,7 @@ if SERVER then
 					-- Holding and moving forward throws the target in front
 					self:Cqc_throw(target, 1)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyPressed(IN_USE) and not self:KeyPressed(IN_FORWARD) and self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and not self:KeyDown(IN_USE) and not self:KeyDown(IN_FORWARD) and self:KeyDown(IN_BACK) and not self:GetNWBool("animation_playing") then
 				if self:GetNWBool("is_grabbed_crouched", false) then
 					-- Start prone choke
 					self:Cqc_grab_tchoke_start(target)
@@ -1264,13 +1264,13 @@ if SERVER then
 					-- Holding and moving backward throws the target behind
 					self:Cqc_throw(target, 2)
 				end
-			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyPressed(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyDown(IN_USE) and self:GetNWInt("blades", 0) == 3 and not self:KeyDown(IN_FORWARD) and not self:KeyDown(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while holding cqc button does the throat cut
 				self:Cqc_throat_cut(target)
-			elseif not self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyPressed(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyPressed(IN_FORWARD) and not self:KeyPressed(IN_BACK) and not self:GetNWBool("animation_playing") then
+			elseif not self:GetNWBool("cqc_button_held", false) and self:GetNWFloat("cqc_button_hold_time", 0) < 0.2 and self:KeyDown(IN_USE) and self:GetNWInt("scanner", 0) > 0 and not self:KeyDown(IN_FORWARD) and not self:KeyDown(IN_BACK) and not self:GetNWBool("animation_playing") then
 				-- press e while not holding does the scan
 				self:Cqc_sop_scan(target)
-			elseif self:KeyPressed(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
+			elseif self:KeyDown(IN_BACK) and not target:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("is_grabbed_crouched", false) and not self:GetNWBool("animation_playing") then
 				-- Pressing back button moves backwards
 				self:Cqc_grab_move(target)
 			elseif self:KeyPressed(IN_DUCK) then
