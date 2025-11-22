@@ -44,7 +44,6 @@ if SERVER then
 
         self.NPC = nil
         ow:SetNoDraw(false)
-        ow:SetRenderMode(RENDERMODE_NORMAL)
         ow:DrawShadow(true)
         if ow:IsNPC() and ow.SetNPCState then
             ow:ClearSchedule()
@@ -69,13 +68,17 @@ if SERVER then
     function ENT:Think()
         local ow = self.NPC
 
-        if !IsValid(ow) or ow:Health() <= 0 or not ow:Alive() then
+        if !IsValid(ow) or not ow:Alive() then
             self:Stop()
             self:Remove()
             return
         else
+            self:SetNoDraw(true)
+            self:DrawShadow(false)
+            self:NextThink(CurTime())
+            self:SetPos(ow:GetPos())
+            self:SetAngles(ow:GetAngles())
             ow:SetNoDraw(true)
-            ow:SetRenderMode(RENDERMODE_NONE)
             ow:DrawShadow(false)
             if ow.IsVJBaseSNPC then
                 ow.HasDeathAnimation = false
@@ -85,12 +88,7 @@ if SERVER then
             if IsValid(wep) then
                 wep:SetNoDraw(true)
             end
-    		self:SetPos(ow:GetPos())
-		    self:SetAngles(ow:GetAngles())
         end
-        self:SetNoDraw(true)
-        self:DrawShadow(false)
-        self:NextThink(CurTime())
         return true
     end
 end

@@ -84,6 +84,8 @@ function ent:PlayMGS4Animation(anim, callback, updatepos, speed)
 
 	self:EmitMGS4Sound(anim, sp_modifier)
 
+	if not self:IsPlayer() then return end
+
 	-- Thanks Hari and NizcKM, This idea for server animations is great. 
 	self:SetNWString('SVAnim', anim)
 	self:SetNWFloat('SVAnimDelay', select(2, self:LookupSequence(anim)))
@@ -1625,10 +1627,6 @@ if SERVER then
 	end)
 
 	-- Cleanup on player death
-	hook.Add("PostPlayerDeath", "MGS4PlayerDeathCleanup", function(ply)
-		SetUpEnt(ply)
-	end)
-
 	hook.Add("DoPlayerDeath", "MGS4PlayerPreDeathCleanup", function(ply, attacker, dmg)
 		if ply:GetNWBool("cqc_grabbing", NULL) ~= NULL then
 			ply:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
@@ -1637,6 +1635,7 @@ if SERVER then
 			local target = ply:GetNWBool("cqc_grabbing", NULL)
 			target:Cqc_grab_letgo(1, target:GetNWBool("is_grabbed_crouched", false))
 		end
+		SetUpEnt(ply)
 	end)
 
 	-- === Non lethal Damage Handling ===
@@ -2361,7 +2360,7 @@ else
 
 			local attach = entity:GetAttachment( entity:LookupAttachment( "eyes" ) )
 
-			if entity:IsNPC() and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
+			if (entity:IsNPC() or entity:IsNextBot()) and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
 				local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
 
 				attach = npc_proxy:GetAttachment( npc_proxy:LookupAttachment( "eyes" ) )
