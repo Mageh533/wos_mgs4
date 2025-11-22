@@ -83,7 +83,9 @@ if SERVER then
             if ow.IsVJBaseSNPC then
                 ow.HasDeathAnimation = false
             end
-            ow:AddEFlags(EFL_NO_THINK_FUNCTION)
+            if not ow:IsEFlagSet(EFL_NO_THINK_FUNCTION) then
+                ow:AddEFlags(EFL_NO_THINK_FUNCTION)
+            end
             local wep = ow:GetActiveWeapon()
             if IsValid(wep) then
                 wep:SetNoDraw(true)
