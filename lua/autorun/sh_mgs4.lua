@@ -1821,7 +1821,7 @@ if SERVER then
 
 			-- Freeze when animation is playing but can still take damage
 			if entity:GetNWBool("animation_playing", true) then
-				if entity:IsPlayer() then
+				if entity:IsPlayer() and entity:Alive() then
 					entity:Freeze(true)
 					if entity:GetAngles().y ~= entity:EyeAngles().y then
 						-- If they are a player we need to ensure the body is rotated to the eyeangles (only viable way i found is adding some dummy velocity)
