@@ -2377,47 +2377,52 @@ else
 	end )
 
 	hook.Add( "PostDrawTranslucentRenderables", "MGS4DrawKnockedoutStars", function()
-		for _, entity in ipairs( ents.GetAll() ) do
+        local npc_and_players = ents.FindByClass("player") -- Find all players
+        npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
+
+		for _, entity in ipairs( npc_and_players ) do
 			local is_knocked_out = entity:GetNWBool("is_knocked_out", false)
-			local last_dmg_type = entity:GetNWInt("last_nonlethal_damage_type", 0)
 
-			local attach = entity:GetAttachment( entity:LookupAttachment( "eyes" ) )
+			if is_knocked_out and entity:Alive() and (entity:IsNPC() or entity:IsPlayer() or entity:IsNextBot()) then
+				local last_dmg_type = entity:GetNWInt("last_nonlethal_damage_type", 0)
+				local attach = entity:GetAttachment( entity:LookupAttachment( "eyes" ) )
 
-			if (entity:IsNPC() or entity:IsNextBot()) and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
-				local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
+				if (entity:IsNPC() or entity:IsNextBot()) and entity:GetNWEntity("npc_proxy", NULL) ~= NULL then
+					local npc_proxy = entity:GetNWEntity("npc_proxy", NULL)
 
-				attach = npc_proxy:GetAttachment( npc_proxy:LookupAttachment( "eyes" ) )
-			end
-
-			local psyche = entity:GetNWFloat("psyche", 0)
-
-			if ( is_knocked_out and last_dmg_type ~= 1 and entity:Alive() ) then
-				if ( attach ) then
-					local stars = math.Clamp( math.ceil( ( 100 - psyche ) / 20 ), 1, 5 )
-
-					for i = 1, stars do
-						local time = CurTime() * 3 + ( math.pi * 2 / stars * i )
-						local offset = Vector( math.sin( time ) * 5, math.cos( time ) * 5, 10 )
-
-						render.SetMaterial( Star )
-						render.DrawSprite( attach.Pos + offset, 5, 5, Color( 255, 215, 94 ) )
-					end
+					attach = npc_proxy:GetAttachment( npc_proxy:LookupAttachment( "eyes" ) )
 				end
-			elseif ( is_knocked_out and last_dmg_type == 1 and entity:Alive() ) then
-				if ( attach ) then
-					local zzz = math.Clamp( math.ceil( ( 100 - psyche ) / 33 ), 1, 3 )
 
-					for i = 1, zzz do
-						local time = CurTime() * 2 + ( math.pi * 4 / zzz * i * 4 )
-						local vertical_offset = (time % 6 * 4) + 10
-						local horizontal_offset = math.sin(time + i) * 4 
-						local offset = Vector(horizontal_offset, 0, vertical_offset)
+				local psyche = entity:GetNWFloat("psyche", 0)
 
-						local t = (vertical_offset - 10) / (6 * 4)
-						local size = (1 - math.abs(t - 0.5) * 2) * 6
+				if ( last_dmg_type ~= 1 ) then
+					if ( attach ) then
+						local stars = math.Clamp( math.ceil( ( 100 - psyche ) / 20 ), 1, 5 )
 
-						render.SetMaterial(Sleep)
-						render.DrawSprite(attach.Pos + offset, size, size, Color(255, 215, 94, 220))
+						for i = 1, stars do
+							local time = CurTime() * 3 + ( math.pi * 2 / stars * i )
+							local offset = Vector( math.sin( time ) * 5, math.cos( time ) * 5, 10 )
+
+							render.SetMaterial( Star )
+							render.DrawSprite( attach.Pos + offset, 5, 5, Color( 255, 215, 94 ) )
+						end
+					end
+				elseif ( last_dmg_type == 1 ) then
+					if ( attach ) then
+						local zzz = math.Clamp( math.ceil( ( 100 - psyche ) / 33 ), 1, 3 )
+
+						for i = 1, zzz do
+							local time = CurTime() * 2 + ( math.pi * 4 / zzz * i * 4 )
+							local vertical_offset = (time % 6 * 4) + 10
+							local horizontal_offset = math.sin(time + i) * 4 
+							local offset = Vector(horizontal_offset, 0, vertical_offset)
+
+							local t = (vertical_offset - 10) / (6 * 4)
+							local size = (1 - math.abs(t - 0.5) * 2) * 6
+
+							render.SetMaterial(Sleep)
+							render.DrawSprite(attach.Pos + offset, size, size, Color(255, 215, 94, 220))
+						end
 					end
 				end
 			end
