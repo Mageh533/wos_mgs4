@@ -123,6 +123,11 @@ function SWEP:PrimaryAttack()
 		-- Drain some additional psyche over time
 		if SERVER then
 			hook.Add("Tick", "MGS4DrainPsycheFrom" .. tr.Entity:EntIndex(), function ()
+				if not IsValid(tr.Entity) then
+					hook.Remove("Tick", "MGS4DrainPsycheFrom" .. tr.Entity:EntIndex())
+					return
+				end
+
 				local ent_psyche = tr.Entity:GetNWFloat("psyche", 100)
 
 				-- If they are knocked out then stop the drain early
