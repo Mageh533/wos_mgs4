@@ -1728,7 +1728,8 @@ if SERVER then
 				end
 
 				if disable_physics_dmg then return true end
-				dmginfo:SetDamage( dmginfo:GetDamage() / 2 )
+
+				dmginfo:SetDamage( dmginfo:GetDamage() / multiplier )
 			end
 		end
 	end)

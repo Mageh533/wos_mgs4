@@ -8,9 +8,7 @@ BUGS TO FIX:
 
 1. Desync on multiplayer (when playing animations as well), maybe make the functions shared?
 1. Mk2 on ttt, fix slot
-1. Moving backwards when grabbing on its own
 1. Hitboxes on npcs missmatching
-1. Stuck check is causing npcs to wobble back and forwards
 
 TODO EXTRA FEATURES:
 
@@ -21,4 +19,3 @@ TODO EXTRA FEATURES:
 5. Sleep mines.
 6. Other skills.
 7. Chaff and Stun grenades.
-
