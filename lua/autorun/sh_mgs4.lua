@@ -402,6 +402,12 @@ if SERVER then
 		self:SetNWBool("is_aiming", false)
 		self:SetNWBool("is_knife", false)
 		self:SetNWBool("is_using", false)
+
+		if self:IsPlayer() then
+			self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
+			self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
+			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
+		end
 	end
 
 	-- === CQC Actions ===
@@ -533,11 +539,6 @@ if SERVER then
 		self:SetNWBool("is_in_cqc", true)
 		self:PlayMGS4Animation(knife_anim, function()
 			self:Cqc_reset()
-			if self:IsPlayer() then
-				self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
-				self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
-			end
-			self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
 		
 			if self:GetNWEntity("knife", NULL) ~= NULL then
 				self:GetNWEntity("knife", NULL):Remove()
@@ -1175,11 +1176,6 @@ if SERVER then
 		self:ForcePosition(true, self:GetPos(), self_angles)
 		self:PlayMGS4Animation(letgo_anim, function ()
 			self:ForcePosition(false)
-			if self:IsPlayer() then
-				self:SetHullDuck(Vector(-16, -16, 0), Vector(16, 16, 36)) -- Set crouch hull back to normal
-				self:SetHull(Vector(-16, -16, 0), Vector(16, 16, 72)) -- Set stand hull back to normal
-				self:SetViewOffset(Vector(0, 0, 64)) -- Set stand view offset back to normal
-			end
 			self:SetNWFloat("cqc_immunity_remaining", GetConVar("mgs4_cqc_immunity"):GetFloat())
 
 			if type == 3 then
