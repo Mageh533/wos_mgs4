@@ -1621,13 +1621,13 @@ if SERVER then
 	end
 
 	-- === Initialization ===
-	hook.Add("PlayerSpawn", "MGS4PlayerSpawn", function(ent)
-		SetUpEnt(ent)
+	hook.Add("PlayerSpawn", "MGS4PlayerSpawn", function(entity)
+		SetUpEnt(entity)
 	end)
 
-	hook.Add("OnEntityCreated", "MGS4EntityCreated", function (ent)
-		if not ent:IsPlayer() then
-			SetUpEnt(ent)
+	hook.Add("OnEntityCreated", "MGS4EntityCreated", function (entity)
+		if entity:IsNPC() or entity:IsNextBot() then
+			SetUpEnt(entity)
 		end
 	end)
 
