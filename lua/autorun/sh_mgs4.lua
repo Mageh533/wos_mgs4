@@ -1544,6 +1544,10 @@ if SERVER then
 	end
 
 	function SetUpEnt(entity)
+		if entity:GetNWEntity("knife", NULL) ~= NULL then
+			entity:GetNWEntity("knife", NULL):Remove()
+		end
+
 		--- Only affects players
 		entity:SetNWBool("animation_playing", false)
 
@@ -1614,10 +1618,6 @@ if SERVER then
 		--- 2 = Generic Stun
 		--- 3 = Stun (Face down)
 		entity:SetNWInt("last_nonlethal_damage_type", 0)
-
-		if entity:GetNWEntity("knife", NULL) ~= NULL then
-			entity:GetNWEntity("knife", NULL):Remove()
-		end
 	end
 
 	-- === Initialization ===
