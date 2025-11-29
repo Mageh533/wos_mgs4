@@ -224,8 +224,10 @@ if SERVER then
 				-- push the forced position
 				self:SetNWVector("forced_position", self:GetNWVector("forced_position") - direction)
 			else
-				-- Push the actual position
-				self:SetPos(pos - direction)
+				-- Push the actual position only if not hitting a player or NPC
+				if not tr.Entity or (not tr.Entity:IsPlayer() and not tr.Entity:IsNPC() and not tr.Entity:IsNextBot()) then
+					self:SetPos(pos - direction)
+				end
 			end
 		else
 			-- Set the currently known safe pos
@@ -1843,7 +1845,7 @@ if SERVER then
 
 				entity:SetNWFloat("stuck_check", entity:GetNWFloat("stuck_check", 0) - FrameTime())
 			elseif not entity:GetNWBool("is_knocked_out", true) then
-				if entity:IsPlayer() then	
+				if entity:IsPlayer() then
 					entity:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 				else
 					entity:SetCollisionGroup(COLLISION_GROUP_NPC)
