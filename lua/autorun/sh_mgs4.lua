@@ -1739,7 +1739,13 @@ if SERVER then
         local npc_and_players = ents.FindByClass("player") -- Find all players
         npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
 
+		local player_only = ents.FindByClass("player")
+		for _, player in ipairs(player_only) do
+			if player:InVehicle() then return end
+		end
+		
 		for _, entity in ipairs(npc_and_players) do
+
 			if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
 			if entity:GetNWFloat("psyche", 100) <= 0 and not entity:GetNWBool("is_knocked_out", false) and not entity:GetNWBool("animation_playing", false) then
