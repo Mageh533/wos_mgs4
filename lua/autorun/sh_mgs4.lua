@@ -1735,16 +1735,17 @@ if SERVER then
 	local disable_psyche_damage = false
 
 	-- === Handles systems every tick like grabbing and psyche ===
-	hook.Add("Tick", "MGS4Tick", function()
-        local npc_and_players = ents.FindByClass("player") -- Find all players
-        npc_and_players = table.Add(npc_and_players, ents.FindByClass("npc_*")) -- Add all NPCs
+hook.Add("Tick", "MGS4Tick", function()
+        local entities = ents.FindByClass("player")
+		table.Add(entities, ents.FindByClass("npc_*"))
 
-		local player_only = ents.FindByClass("player")
-		for _, player in ipairs(player_only) do
-			if player:InVehicle() then return end
-		end
-		
-		for _, entity in ipairs(npc_and_players) do
+		for _, entity in ipairs(entities) do
+			if not IsValid(entity) then continue end
+			if entity:IsPlayer() then
+				if entity:InVehicle() then
+					continue
+				end
+			end
 
 			if entity:LookupBone("ValveBiped.Bip01_Pelvis") == nil then return end
 
